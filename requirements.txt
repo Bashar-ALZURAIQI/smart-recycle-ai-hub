@@ -47,3 +47,4 @@ ultralytics==8.4.142
 ultralytics-platform==0.1.21
 ultralytics-thop==2.1.6
 urllib3==2.7.0
+streamlit==1.63.0
