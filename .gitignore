@@ -9,3 +9,4 @@ data/interim/
 data/inspection/
 __pycache__/
 *.pyc
+data/benchmarks/
