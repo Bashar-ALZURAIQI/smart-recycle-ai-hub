@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import hashlib
+import re
+from collections import defaultdict
+from pathlib import Path
+
+from PIL import Image
+
 from audit_waste_v2_sources import parse_yolo_annotation
 
 
@@ -195,11 +202,6 @@ SOURCE_CLASS_MAPS = {
 
 # ============================================================
 # Controlled-negative source classes
-#
-# These are explicitly known organic / biodegradable classes
-# that may later enter a LIMITED negative-training subset.
-#
-# An unmapped class is NOT automatically considered negative.
 # ============================================================
 
 CONTROLLED_NEGATIVE_CLASSES = {
@@ -221,6 +223,10 @@ CONTROLLED_NEGATIVE_CLASSES = {
 }
 
 
+# ============================================================
+# Class mapping
+# ============================================================
+
 def map_source_class(
     source_name: str,
     source_class: int,
@@ -228,19 +234,6 @@ def map_source_class(
     """
     Convert one source class ID into the final four-class
     Smart Recycle AI-Hub schema.
-
-    Returns:
-        0 -> plastic
-        1 -> metal
-        2 -> glass
-        3 -> paper_cardboard
-
-        None -> the class is intentionally not mapped to
-                a final target class.
-
-    Important:
-        None does not automatically mean the object is safe
-        to use as background.
     """
     if source_name not in SOURCE_CLASS_MAPS:
         raise ValueError(
@@ -254,15 +247,16 @@ def map_source_class(
     ].get(source_class)
 
 
+# ============================================================
+# Annotation conversion
+# ============================================================
+
 def polygon_to_yolo_bbox(
     points: list[tuple[float, float]],
 ) -> tuple[float, float, float, float]:
     """
     Convert normalized segmentation polygon points into an
     enclosing normalized YOLO detection bounding box.
-
-    Returns:
-        x_center, y_center, width, height
     """
     xs = [
         x
@@ -311,14 +305,6 @@ def convert_yolo_annotation(
     """
     Convert one YOLO source annotation into the final
     Waste V2 detection schema.
-
-    Bounding-box annotations retain their geometry.
-
-    Segmentation polygons are converted to their enclosing
-    detection bounding box.
-
-    Returns None when the source class does not map to one
-    of the four final target classes.
     """
     parsed = parse_yolo_annotation(
         line,
@@ -366,28 +352,21 @@ def convert_yolo_annotation(
     )
 
 
+# ============================================================
+# Image-level selection rules
+# ============================================================
+
 def classify_image_classes(
     source_name: str,
     source_classes: list[int],
 ) -> str:
     """
-    Classify an image using all annotated source classes.
+    Classify one image as:
 
-    Returns:
         target
-            Every annotated object belongs to one of the
-            four final target classes.
-
         negative_candidate
-            Every object belongs only to explicitly approved
-            organic / biodegradable negative classes.
-
         ambiguous
-            Target and non-target objects are mixed, or an
-            unsupported non-target class exists.
-
         empty
-            No annotations were supplied.
     """
     if not source_classes:
         return "empty"
@@ -449,49 +428,6 @@ def prepare_yolo_image_annotations(
 ) -> dict:
     """
     Prepare all YOLO annotations belonging to one image.
-
-    The function makes the image-level decision BEFORE
-    generating final training annotations.
-
-    Result format:
-
-        {
-            "status": "target",
-            "annotations": [
-                (
-                    class_id,
-                    x_center,
-                    y_center,
-                    width,
-                    height,
-                ),
-                ...
-            ],
-        }
-
-    Image-level rules:
-
-        target:
-            All source objects map cleanly to target classes.
-            Final V2 annotations are returned.
-
-        negative_candidate:
-            The image contains only explicitly approved
-            organic / biodegradable classes.
-            No positive labels are returned.
-
-        ambiguous:
-            The image contains target + non-target objects,
-            or unsupported objects.
-            No labels are returned because the whole image
-            must be excluded from core training.
-
-        empty:
-            No source annotations.
-            No assumption is made that it is a negative image.
-
-    Invalid source annotations raise ValueError instead of
-    being silently ignored.
     """
     parsed_annotations = []
 
@@ -552,3 +488,212 @@ def prepare_yolo_image_annotations(
         "status": "target",
         "annotations": final_annotations,
     }
+
+
+# ============================================================
+# Roboflow augmentation families
+# ============================================================
+
+ROBOFLOW_SUFFIX_PATTERN = re.compile(
+    r"\.rf\.[^.]+$",
+    flags=re.IGNORECASE,
+)
+
+
+def roboflow_family_key(
+    filename: str,
+) -> str:
+    """
+    Return the underlying image family name.
+
+    Example:
+
+        bottle_jpg.rf.abc123.jpg
+        bottle_jpg.rf.xyz789.jpg
+
+    both become:
+
+        bottle_jpg
+    """
+    stem = Path(filename).stem
+
+    return ROBOFLOW_SUFFIX_PATTERN.sub(
+        "",
+        stem,
+    )
+
+
+def image_family_id(
+    source_name: str,
+    filename: str,
+) -> str:
+    """
+    Build a source-aware family ID.
+
+    Similar names from different datasets are deliberately
+    kept separate unless image fingerprinting later proves
+    they are duplicates.
+    """
+    family_key = roboflow_family_key(
+        Path(filename).name
+    )
+
+    return (
+        f"{source_name}:"
+        f"{family_key}"
+    )
+
+
+def group_records_by_family(
+    records: list[dict],
+) -> dict[str, list[dict]]:
+    """
+    Group candidate image records by source-aware image family.
+    """
+    groups = defaultdict(list)
+
+    for record in records:
+        source_name = record["source"]
+        image_path = Path(record["path"])
+
+        family_id = image_family_id(
+            source_name,
+            image_path.name,
+        )
+
+        groups[family_id].append(
+            record
+        )
+
+    return dict(groups)
+
+
+# ============================================================
+# Benchmark / duplicate fingerprints
+# ============================================================
+
+def compute_dhash(
+    image: Image.Image,
+) -> str:
+    """
+    Compute a 64-bit difference hash.
+
+    This is used only for exact equality of perceptual hashes
+    at this stage. No near-duplicate threshold is applied.
+    """
+    grayscale = image.convert("L")
+
+    resized = grayscale.resize(
+        (9, 8),
+        Image.Resampling.LANCZOS,
+    )
+
+    pixels = list(
+        resized.getdata()
+    )
+
+    bits = []
+
+    for row in range(8):
+        row_start = row * 9
+
+        for column in range(8):
+            left = pixels[
+                row_start + column
+            ]
+
+            right = pixels[
+                row_start + column + 1
+            ]
+
+            bits.append(
+                1
+                if left > right
+                else 0
+            )
+
+    value = 0
+
+    for bit in bits:
+        value = (
+            value << 1
+        ) | bit
+
+    return f"{value:016x}"
+
+
+def image_fingerprint(
+    path: Path,
+) -> dict:
+    """
+    Create exact and perceptual fingerprints for one image.
+
+    sha256:
+        Detects byte-for-byte identical files.
+
+    dhash + dimensions:
+        Detects the same visual image when file encoding
+        changes but image content remains perceptually equal.
+    """
+    path = Path(path)
+
+    sha256 = hashlib.sha256(
+        path.read_bytes()
+    ).hexdigest()
+
+    with Image.open(path) as image:
+        width, height = image.size
+
+        dhash = compute_dhash(
+            image
+        )
+
+    return {
+        "sha256": sha256,
+        "dhash": dhash,
+        "width": width,
+        "height": height,
+    }
+
+
+def benchmark_match_kind(
+    candidate_fingerprint: dict,
+    benchmark_fingerprints: list[dict],
+) -> str | None:
+    """
+    Check whether a candidate overlaps a protected benchmark.
+
+    Returns:
+
+        exact
+            Same SHA-256, therefore byte-for-byte identical.
+
+        perceptual_exact
+            Different bytes, but exact same dHash and image
+            dimensions.
+
+        None
+            No protected benchmark match found.
+
+    This deliberately does NOT perform fuzzy/near-duplicate
+    matching yet.
+    """
+    for benchmark in benchmark_fingerprints:
+        if (
+            candidate_fingerprint["sha256"]
+            == benchmark["sha256"]
+        ):
+            return "exact"
+
+    for benchmark in benchmark_fingerprints:
+        if (
+            candidate_fingerprint["dhash"]
+            == benchmark["dhash"]
+            and candidate_fingerprint["width"]
+            == benchmark["width"]
+            and candidate_fingerprint["height"]
+            == benchmark["height"]
+        ):
+            return "perceptual_exact"
+
+    return None
