@@ -1,8 +1,71 @@
-# Smart Recycle AI-Hub
+# ♻️ Smart Recycle AI-Hub
 
-Smart Recycle AI-Hub is a university-scale smart recycling prototype that combines computer vision, artificial intelligence, conveyor control, sensors, and a robotic sorting mechanism.
+### AI-Powered Waste Detection and Robotic Sorting Prototype
 
-The V1 system is designed to detect recyclable waste using a fixed camera and a trained YOLO26n model, then later use Python decision logic and Arduino communication to route each object to the correct bin.
+Smart Recycle AI-Hub is a university-scale smart recycling prototype that combines **artificial intelligence, computer vision, Python, YOLO, sensors, conveyor control, and robotic sorting**.
+
+The V1 system uses a fixed camera and a trained **YOLO26n** model to detect recyclable waste. The next stages connect the AI decision layer with an Arduino-compatible controller, conveyor system, sensors, and a robotic arm to sort objects into the correct recycling bins.
+
+---
+
+## 🚀 Project Status
+
+**Current Stage:** AI detection and software inference completed — physical system integration in progress.
+
+| Component                   | Status         |
+| --------------------------- | -------------- |
+| Dataset preparation         | ✅ Completed    |
+| Dataset validation          | ✅ Completed    |
+| YOLO26n training            | ✅ Completed    |
+| Model validation            | ✅ Completed    |
+| Python inference            | ✅ Completed    |
+| Streamlit testing interface | ✅ Completed    |
+| Automated tests             | ✅ Completed    |
+| Decision & reject logic     | 🔄 In Progress |
+| Live camera inference       | ⏳ Planned      |
+| Arduino communication       | ⏳ Planned      |
+| Conveyor integration        | ⏳ Planned      |
+| Robotic arm integration     | ⏳ Planned      |
+| Complete V1 prototype       | ⏳ Planned      |
+
+---
+
+## 🧠 AI Model Performance
+
+The first official YOLO26n V1 baseline was trained on the project's validated recycling dataset.
+
+| Metric    |    Result |
+| --------- | --------: |
+| Precision | **0.809** |
+| Recall    | **0.747** |
+| mAP50     | **0.802** |
+| mAP50-95  | **0.452** |
+
+### Dataset
+
+* **15,148** training images
+* **83,850** training objects
+* **1,268** validation images
+* **2,086** validation objects
+
+---
+
+## 🛠️ Core Technologies
+
+`Python` · `YOLO26n` · `Ultralytics` · `OpenCV` · `Streamlit` · `PyTorch` · `Arduino` · `Computer Vision` · `Robotics`
+
+---
+
+## 🎯 V1 Goal
+
+Build and verify a complete prototype capable of detecting and sorting four recyclable waste categories:
+
+* Plastic
+* Metal
+* Glass
+* Paper / Cardboard
+
+Objects that do not satisfy the required detection confidence will later be handled by the Python decision layer and routed to the **Reject** path.
 
 ---
 
