@@ -2,11 +2,13 @@
 
 ### AI-Powered Waste Detection and Robotic Sorting Prototype
 
-Smart Recycle AI-Hub is a university-scale smart recycling prototype that combines **artificial intelligence, computer vision, Python, YOLO, sensors, conveyor control, and robotic sorting**.
+Smart Recycle AI-Hub is a university-scale smart recycling prototype that combines **artificial intelligence, computer vision, Python, YOLO, sensors, conveyor control, embedded systems, and robotic sorting**.
 
-The V1 system uses a fixed camera and a trained **YOLO26n** model to detect recyclable waste. The next stages connect the AI decision layer with an Arduino-compatible controller, conveyor system, sensors, and a robotic arm to sort objects into the correct recycling bins.
+The V1 system uses a fixed camera and a trained **YOLO26n** object-detection model to identify recyclable waste. The AI layer is being developed as part of a complete physical sorting pipeline that will connect computer vision with an Arduino-compatible controller, conveyor system, sensors, and a robotic arm.
 
-## 🔄 System Flow
+---
+
+## 🔄 System Architecture
 
 ```mermaid
 flowchart LR
@@ -20,72 +22,55 @@ flowchart LR
     H --> I[Target Recycling Bin / Reject]
 ```
 
+The complete V1 workflow is designed around a simple principle:
+
+**Detect → Decide → Communicate → Sort**
+
 ---
 
 ## 🚀 Project Status
 
-**Current Stage:** AI detection and software inference completed — physical system integration in progress.
+**Current Stage:** AI detection and software inference completed — decision logic and physical-system integration are the next development stages.
 
-| Component                   | Status         |
-| --------------------------- | -------------- |
-| Dataset preparation         | ✅ Completed    |
-| Dataset validation          | ✅ Completed    |
-| YOLO26n training            | ✅ Completed    |
-| Model validation            | ✅ Completed    |
-| Python inference            | ✅ Completed    |
-| Streamlit testing interface | ✅ Completed    |
-| Automated tests             | ✅ Completed    |
-| Decision & reject logic     | 🔄 In Progress |
-| Live camera inference       | ⏳ Planned      |
-| Arduino communication       | ⏳ Planned      |
-| Conveyor integration        | ⏳ Planned      |
-| Robotic arm integration     | ⏳ Planned      |
-| Complete V1 prototype       | ⏳ Planned      |
-
----
-
-## 🧠 AI Model Performance
-
-The first official YOLO26n V1 baseline was trained on the project's validated recycling dataset.
-
-| Metric    |    Result |
-| --------- | --------: |
-| Precision | **0.809** |
-| Recall    | **0.747** |
-| mAP50     | **0.802** |
-| mAP50-95  | **0.452** |
-
-### Dataset
-
-* **15,148** training images
-* **83,850** training objects
-* **1,268** validation images
-* **2,086** validation objects
-
----
-
-## 🛠️ Core Technologies
-
-`Python` · `YOLO26n` · `Ultralytics` · `OpenCV` · `Streamlit` · `PyTorch` · `Arduino` · `Computer Vision` · `Robotics`
+| Component | Status |
+| --- | --- |
+| Dataset preparation | ✅ Completed |
+| Dataset validation | ✅ Completed |
+| YOLO26n training | ✅ Completed |
+| Model validation | ✅ Completed |
+| Python inference | ✅ Completed |
+| Streamlit testing interface | ✅ Completed |
+| Automated tests | ✅ Completed |
+| Decision & reject logic | 🔄 In Progress |
+| Live camera inference | ⏳ Planned |
+| PySerial communication | ⏳ Planned |
+| Arduino integration | ⏳ Planned |
+| Conveyor integration | ⏳ Planned |
+| Sensor integration | ⏳ Planned |
+| Robotic arm integration | ⏳ Planned |
+| Physical sorting test | ⏳ Planned |
+| Integrated V1 prototype | ⏳ Planned |
 
 ---
 
 ## 🎯 V1 Goal
 
-Build and verify a complete prototype capable of detecting and sorting four recyclable waste categories:
+The goal of V1 is to build and verify a complete prototype capable of detecting and sorting four recyclable waste categories:
 
-* Plastic
-* Metal
-* Glass
-* Paper / Cardboard
+- Plastic
+- Metal
+- Glass
+- Paper / Cardboard
 
-Objects that do not satisfy the required detection confidence will later be handled by the Python decision layer and routed to the **Reject** path.
+The prototype is intentionally limited to these four categories so that the complete AI-to-hardware pipeline can be tested before expanding the project.
+
+Objects that do not satisfy the required detection criteria will be handled by the Python decision layer and routed to a **Reject** path.
 
 ---
 
-## V1 Waste Classes
+## 🧠 Waste Classes
 
-The V1 YOLO model is frozen to four classes:
+The V1 YOLO model is frozen to four detection classes:
 
 ```text
 0: plastic
@@ -94,76 +79,24 @@ The V1 YOLO model is frozen to four classes:
 3: paper_cardboard
 ```
 
-`Reject` is not a YOLO class.
+> **Important:** `Reject` is not a YOLO class.
 
-Unknown or low-confidence objects will be handled later by the Python decision logic and routed to the reject path.
-
----
-
-## V1 Prototype Flow
-
-The planned complete system flow is:
-
-```text
-Waste object
-    ↓
-Fixed camera
-    ↓
-YOLO26n detection
-    ↓
-Python decision logic
-    ↓
-Class / Reject decision
-    ↓
-PySerial
-    ↓
-Arduino-compatible controller
-    ↓
-Conveyor + sensor + robotic arm
-    ↓
-Target recycling bin
-```
+Unknown, unsupported, or low-confidence detections will be handled separately by the Python decision logic.
 
 ---
 
-## Current Project Status
+## 📊 AI Model Performance
 
-### Dataset
+The first official **YOLO26n V1 baseline** was trained on the project's validated recycling dataset.
 
-Completed:
+| Metric | Result |
+| --- | ---: |
+| Precision | **0.809** |
+| Recall | **0.747** |
+| mAP50 | **0.802** |
+| mAP50-95 | **0.452** |
 
-- dataset preparation
-- label validation
-- class validation
-- bounding-box validation
-- duplicate-label analysis
-- train/validation leakage analysis
-- final train and validation split verification
-
-The V1 dataset contains:
-
-```text
-Training images:   15,148
-Training objects:  83,850
-Validation images: 1,268
-Validation objects: 2,086
-```
-
-Detailed dataset documentation:
-
-```text
-docs/DATASET_PREPARATION_V1.md
-docs/DATASET_SOURCES.md
-docs/LABELING_GUIDE.md
-```
-
----
-
-### YOLO26n Training
-
-The first official YOLO26n V1 baseline has been trained successfully.
-
-Training configuration:
+### Training Configuration
 
 ```text
 Model:       yolo26n.pt
@@ -173,28 +106,61 @@ Batch size:  16
 Device:      CUDA GPU
 ```
 
-Final overall validation:
+### Dataset Summary
 
-| Metric | Result |
-|---|---:|
-| Precision | 0.809 |
-| Recall | 0.747 |
-| mAP50 | 0.802 |
-| mAP50-95 | 0.452 |
+| Dataset Split | Images | Objects |
+| --- | ---: | ---: |
+| Training | **15,148** | **83,850** |
+| Validation | **1,268** | **2,086** |
 
-Detailed training documentation:
+The dataset preparation process includes:
+
+- label validation
+- class validation
+- bounding-box validation
+- duplicate-label analysis
+- train/validation leakage analysis
+- final split verification
+
+Detailed dataset documentation is available in:
+
+```text
+docs/DATASET_PREPARATION_V1.md
+docs/DATASET_SOURCES.md
+docs/LABELING_GUIDE.md
+```
+
+Detailed training documentation is available in:
 
 ```text
 docs/YOLO26N_TRAINING_V1.md
 ```
 
-The trained model weights are stored locally and are intentionally excluded from Git.
+---
+
+## 🛠️ Core Technologies
+
+### Artificial Intelligence & Computer Vision
+
+`Python` · `YOLO26n` · `Ultralytics` · `OpenCV` · `PyTorch`
+
+### Interface & Testing
+
+`Streamlit` · `Pytest`
+
+### Planned Hardware Integration
+
+`Arduino` · `PySerial` · `Sensors` · `Conveyor System` · `Robotic Arm`
+
+### Development Tools
+
+`Git` · `GitHub` · `VS Code`
 
 ---
 
-## AI Inference
+## 🧩 AI Inference Layer
 
-The AI inference layer is implemented in:
+The main inference module is implemented in:
 
 ```text
 ai/inference.py
@@ -207,13 +173,13 @@ It currently supports:
 - running YOLO inference on images
 - extracting detected class names
 - extracting confidence scores
-- returning YOLO detection results for the user interface
+- returning YOLO detection results to the interface
 
 ---
 
-## Streamlit V1 Image Tester
+## 🖥️ Streamlit V1 Image Tester
 
-A Streamlit-based testing interface has been implemented in:
+A Streamlit-based testing interface is implemented in:
 
 ```text
 ai/streamlit_app.py
@@ -222,18 +188,18 @@ ai/streamlit_app.py
 The interface currently supports:
 
 - uploading multiple waste images
-- selecting one uploaded image for analysis
+- selecting an uploaded image for analysis
 - displaying the original image
-- displaying the YOLO annotated image
+- displaying the YOLO-annotated result
 - displaying detected classes
 - displaying confidence scores
 - displaying detection results in a table
 - counting currently uploaded images
 - counting unique images tested during the session
-- counting total detections during the session
-- preventing the same image from being counted repeatedly after Streamlit reruns
-- resetting the current testing session
-- side-by-side original and YOLO result views
+- counting total detections
+- preventing duplicate session counting after Streamlit reruns
+- resetting the testing session
+- side-by-side original and detection-result views
 
 Detailed documentation:
 
@@ -243,27 +209,39 @@ docs/AI_INFERENCE_STREAMLIT_V1.md
 
 ---
 
-## Run the Streamlit Tester
+## ▶️ Running the Streamlit Tester
 
-Activate the project virtual environment first.
+### 1. Activate the virtual environment
 
-Then run:
+On Windows:
 
 ```cmd
-python -m streamlit run ai\\streamlit_app.py
+.venv\Scripts\activate
 ```
 
-Streamlit will start a local web interface, normally at:
+### 2. Start Streamlit
+
+```cmd
+python -m streamlit run ai\streamlit_app.py
+```
+
+If the system Python does not point to the project's virtual environment, run:
+
+```cmd
+.venv\Scripts\python.exe -m streamlit run ai\streamlit_app.py
+```
+
+Streamlit normally opens at:
 
 ```text
 http://localhost:8501
 ```
 
-Upload one or more real waste images and select an image to run inference.
+You can then upload real waste images and run inference using the trained model.
 
 ---
 
-## Run Automated Tests
+## 🧪 Automated Tests
 
 Run the complete automated test suite with:
 
@@ -271,10 +249,10 @@ Run the complete automated test suite with:
 python -m pytest -q
 ```
 
-The test suite covers the current AI inference and Streamlit workflow, including:
+The current tests cover the AI inference and Streamlit workflow, including:
 
 - V1 class configuration
-- trained model path
+- trained-model path
 - model loading
 - image inference
 - detection extraction
@@ -282,16 +260,16 @@ The test suite covers the current AI inference and Streamlit workflow, including
 - multi-image upload
 - image selection
 - session statistics
-- duplicate session counting protection
+- duplicate session-counting protection
 - reset behavior
 - interface layout
 
 ---
 
-## Repository Structure
+## 📁 Repository Structure
 
 ```text
-Smart_Recycle_AI-Hub/
+smart-recycle-ai-hub/
 │
 ├── ai/
 │   ├── inference.py
@@ -301,15 +279,24 @@ Smart_Recycle_AI-Hub/
 ├── config/
 ├── data/
 ├── docs/
+│   └── evidence/
+├── img/
 ├── logs/
 ├── scripts/
 ├── tests/
 │
+├── .gitignore
 ├── requirements.txt
 └── README.md
 ```
 
-Large generated files and datasets are intentionally excluded from Git.
+The repository separates source code, documentation, datasets, scripts, tests, evidence, configuration, and generated outputs.
+
+---
+
+## 📦 Large Files and Local Data
+
+Large datasets, generated training outputs, virtual environments, local configuration files, and trained model weights are intentionally excluded from Git.
 
 Examples include:
 
@@ -320,77 +307,35 @@ data/raw/
 data/processed/
 data/interim/
 data/inspection/
+data/benchmarks/
 .venv/
 .env
+.vscode/
+__pycache__/
+*.pyc
 ```
+
+This keeps the repository lightweight while preventing local or generated files from being committed accidentally.
 
 ---
 
-## Important Model Location
+## 🤖 Trained Model Location
 
-The current trained V1 model is expected locally at:
+The current V1 model is expected locally at:
 
 ```text
 runs/detect/runs/waste_v1/yolo26n_v1_baseline/weights/best.pt
 ```
 
-`best.pt` is not stored in the Git repository.
+The trained `best.pt` file is intentionally not stored in the Git repository.
 
-A collaborator who wants to run inference must therefore obtain the trained weights separately and place them in the expected local path, or update the model path configuration accordingly.
-
----
-
-## Current AI Milestone
-
-Completed:
-
-```text
-Dataset preparation        DONE
-Dataset validation         DONE
-YOLO26n training           DONE
-Final model validation     DONE
-best.pt generation         DONE
-Python inference layer     DONE
-Streamlit image tester     DONE
-Multi-image testing UI     DONE
-Automated tests            DONE
-```
+A collaborator who wants to run inference must obtain the trained weights separately and place them in the expected local path, or update the model-path configuration accordingly.
 
 ---
 
-## Next Development Steps
+## 📚 Documentation
 
-The immediate development path is:
-
-```text
-Confidence threshold
-        ↓
-Best-detection / decision logic
-        ↓
-Reject handling
-        ↓
-Live camera inference
-        ↓
-PySerial communication
-        ↓
-Arduino integration
-        ↓
-Conveyor + sensor + robotic arm
-        ↓
-First physical AI sorting test
-        ↓
-Integrated V1 prototype
-```
-
-Real-world observations will be documented before deciding whether model retraining is necessary.
-
-The project should not add new waste classes before the V1 prototype is integrated and tested successfully.
-
----
-
-## Documentation
-
-Main project documents include:
+The project includes dedicated technical documentation for each major development stage.
 
 ```text
 docs/PROJECT_SCOPE_V1.md
@@ -399,13 +344,97 @@ docs/DATASET_SOURCES.md
 docs/LABELING_GUIDE.md
 docs/YOLO26N_TRAINING_V1.md
 docs/AI_INFERENCE_STREAMLIT_V1.md
+docs/EXTERNAL_BENCHMARK_V1.md
+docs/AI_SETUP.md
 ai/README.md
+```
+
+Additional validation and experimental evidence is stored under:
+
+```text
+docs/evidence/
 ```
 
 ---
 
-## Project Principle
+## 🛣️ Development Roadmap
 
-Build and verify the complete V1 pipeline before expanding the scope.
+The immediate V1 development path is:
 
-**We can do it. **
+```text
+YOLO26n Detection
+        ↓
+Confidence Threshold
+        ↓
+Best-Detection / Decision Logic
+        ↓
+Reject Handling
+        ↓
+Live Camera Inference
+        ↓
+PySerial Communication
+        ↓
+Arduino Integration
+        ↓
+Conveyor + Sensor Integration
+        ↓
+Robotic Arm Integration
+        ↓
+Physical Sorting Test
+        ↓
+Integrated V1 Prototype
+```
+
+Real-world observations from the integrated prototype will be documented before deciding whether additional model training or dataset expansion is necessary.
+
+New waste classes should not be added until the complete V1 pipeline has been integrated and tested successfully.
+
+---
+
+## 🔬 Development Principles
+
+The project follows several practical principles:
+
+- Validate data before training.
+- Test the model on data outside the training pipeline.
+- Keep AI inference separate from hardware-control logic.
+- Use automated tests for software behavior where possible.
+- Document experiments and evaluation results.
+- Avoid expanding scope before the V1 pipeline works end-to-end.
+- Treat unknown or uncertain detections safely through a reject path.
+- Keep generated datasets, model weights, and local environments outside Git.
+
+---
+
+## 🌱 Future Development
+
+After the complete V1 prototype is operational, future work may include:
+
+- real-time camera processing
+- improved confidence and decision policies
+- physical timing calibration
+- conveyor speed synchronization
+- robotic-arm motion optimization
+- additional external testing
+- model retraining based on real-world observations
+- expansion to additional waste categories
+- improved operator interface
+- hardware safety improvements
+
+These additions will be considered only after the core V1 system is validated.
+
+---
+
+## 📄 License
+
+This repository currently does not include an open-source license.
+
+Unless a license is added later, the source code should not be assumed to grant permission for redistribution, modification, or commercial reuse.
+
+---
+
+## 💡 Project Principle
+
+> **Build and verify the complete V1 pipeline before expanding the scope.**
+
+**We can do it.**
