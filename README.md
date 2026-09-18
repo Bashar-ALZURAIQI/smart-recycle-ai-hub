@@ -9,19 +9,15 @@ The V1 system uses a fixed camera and a trained **YOLO26n** model to detect recy
 ## 🔄 System Flow
 
 ```mermaid
-flowchart TD
+flowchart LR
     A[Waste Object] --> B[Fixed Camera]
     B --> C[YOLO26n Detection]
     C --> D[Python Decision Logic]
-    D --> E{Classified?}
-    E -->|Plastic| F[Plastic Bin]
-    E -->|Metal| G[Metal Bin]
-    E -->|Glass| H[Glass Bin]
-    E -->|Paper / Cardboard| I[Paper Bin]
-    E -->|Low Confidence / Unknown| J[Reject Path]
-    D --> K[PySerial Communication]
-    K --> L[Arduino-Compatible Controller]
-    L --> M[Conveyor + Sensor + Robotic Arm]
+    D --> E[Class / Reject Decision]
+    E --> F[PySerial Communication]
+    F --> G[Arduino-Compatible Controller]
+    G --> H[Conveyor + Sensor + Robotic Arm]
+    H --> I[Target Recycling Bin / Reject]
 ```
 
 ---
