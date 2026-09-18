@@ -6,6 +6,24 @@ Smart Recycle AI-Hub is a university-scale smart recycling prototype that combin
 
 The V1 system uses a fixed camera and a trained **YOLO26n** model to detect recyclable waste. The next stages connect the AI decision layer with an Arduino-compatible controller, conveyor system, sensors, and a robotic arm to sort objects into the correct recycling bins.
 
+## 🔄 System Flow
+
+```mermaid
+flowchart TD
+    A[Waste Object] --> B[Fixed Camera]
+    B --> C[YOLO26n Detection]
+    C --> D[Python Decision Logic]
+    D --> E{Classified?}
+    E -->|Plastic| F[Plastic Bin]
+    E -->|Metal| G[Metal Bin]
+    E -->|Glass| H[Glass Bin]
+    E -->|Paper / Cardboard| I[Paper Bin]
+    E -->|Low Confidence / Unknown| J[Reject Path]
+    D --> K[PySerial Communication]
+    K --> L[Arduino-Compatible Controller]
+    L --> M[Conveyor + Sensor + Robotic Arm]
+```
+
 ---
 
 ## 🚀 Project Status
