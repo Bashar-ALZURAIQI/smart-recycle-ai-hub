@@ -1,774 +1,525 @@
-\# Waste V2.1 Source Audit
-
-
+# Waste V2.1 Source Audit
 
 Date: 2026-09-23
 
-
-
-\## Purpose
-
-
+## Purpose
 
 This document records the datasets audited before building Waste V2.1.
 
-
-
 Final detector classes:
 
+- `0 = plastic`
 
+- `1 = metal`
 
-\- `0 = plastic`
+- `2 = glass`
 
-\- `1 = metal`
-
-\- `2 = glass`
-
-\- `3 = paper\_cardboard`
-
-
+- `3 = paper_cardboard`
 
 `Reject` is handled by the decision layer and is not a YOLO class.
 
-
-
 Raw datasets remain read-only.
 
+---
 
-
-\---
-
-
-
-\## Source 1 — WhiteMind YOLO-Waste Detection v1
-
-
+## Source 1 — WhiteMind YOLO-Waste Detection v1
 
 Root:
 
-
-
-`data/raw/v2\_1\_sources/whitemind\_yolo\_waste`
-
-
+`data/raw/v2_1_sources/whitemind_yolo_waste`
 
 Metadata:
 
+- Version: 1
 
-
-\- Version: 1
-
-\- License: CC BY 4.0
-
-
+- License: CC BY 4.0
 
 Original images:
 
+- Train: 2,340
 
+- Valid: 316
 
-\- Train: 2,340
+- Test: 152
 
-\- Valid: 316
-
-\- Test: 152
-
-\- Total: 2,808
-
-
+- Total: 2,808
 
 Original annotations:
 
-
-
-\- 8,857
-
-
+- 8,857
 
 Classes:
 
+- `0 Biodegradable - Compost`
 
+- `1 Biodegradable | Compost`
 
-\- `0 Biodegradable - Compost`
+- `2 Glass`
 
-\- `1 Biodegradable | Compost`
+- `3 Metal`
 
-\- `2 Glass`
+- `4 Mixed`
 
-\- `3 Metal`
+- `5 Paper`
 
-\- `4 Mixed`
-
-\- `5 Paper`
-
-\- `6 Plastic`
-
-
+- `6 Plastic`
 
 Mapping:
 
+- `2 -> glass`
 
+- `3 -> metal`
 
-\- `2 -> glass`
+- `5 -> paper_cardboard`
 
-\- `3 -> metal`
-
-\- `5 -> paper\_cardboard`
-
-\- `6 -> plastic`
-
-
+- `6 -> plastic`
 
 Excluded:
 
+- `0`
 
+- `1`
 
-\- `0`
-
-\- `1`
-
-\- `4`
-
-
+- `4`
 
 Policy:
 
+- Keep supported-only images.
 
+- Exclude the entire image if any unsupported class occurs.
 
-\- Keep supported-only images.
+- Never strip unsupported boxes from a mixed image.
 
-\- Exclude the entire image if any unsupported class occurs.
-
-\- Never strip unsupported boxes from a mixed image.
-
-\- Do not convert excluded images into negatives.
-
-
+- Do not convert excluded images into negatives.
 
 Audit:
 
+- Supported-only images: 2,772
 
+- Excluded images: 36
 
-\- Supported-only images: 2,772
-
-\- Excluded images: 36
-
-\- Kept annotations: 8,675
-
-
+- Kept annotations: 8,675
 
 Final mapped annotation counts:
 
+- plastic: 2,566
 
+- metal: 1,985
 
-\- plastic: 2,566
+- glass: 1,504
 
-\- metal: 1,985
-
-\- glass: 1,504
-
-\- paper\_cardboard: 2,620
-
-
+- paper_cardboard: 2,620
 
 Quality:
 
+- Bad format: 0
 
+- Bad class IDs: 0
 
-\- Bad format: 0
+- Bad coordinates: 0
 
-\- Bad class IDs: 0
-
-\- Bad coordinates: 0
-
-\- Zero-size boxes: 0
-
-
+- Zero-size boxes: 0
 
 Status:
 
-
-
 `READY`
 
+---
 
-
-\---
-
-
-
-\## Source 2 — Waste Detection Dataset 1 v3
-
-
+## Source 2 — Waste Detection Dataset 1 v3
 
 Root:
 
-
-
-`data/raw/v2\_1\_sources/waste\_detection\_dataset\_1`
-
-
+`data/raw/v2_1_sources/waste_detection_dataset_1`
 
 Metadata:
 
+- Version: 3
 
-
-\- Version: 3
-
-\- License: CC BY 4.0
-
-
+- License: CC BY 4.0
 
 Original images:
 
+- Train: 15,759
 
+- Valid: 994
 
-\- Train: 15,759
+- Test: 429
 
-\- Valid: 994
-
-\- Test: 429
-
-\- Total: 17,182
-
-
+- Total: 17,182
 
 Original annotations:
 
-
-
-\- 27,803
-
-
+- 27,803
 
 Empty label files:
 
-
-
-\- 91
-
-
+- 91
 
 Supported mappings:
 
+### Plastic
 
+- `11 HDPE Bottles`
 
-\### Plastic
+- `20 PET Bottle`
 
+- `21 PET Cup`
 
+- `22 PS Plastic`
 
-\- `11 HDPE Bottles`
+- `25 Plastic Bag`
 
-\- `20 PET Bottle`
+- `26 Plastic Wrapper`
 
-\- `21 PET Cup`
+- `29 plastic straw`
 
-\- `22 PS Plastic`
+### Metal
 
-\- `25 Plastic Bag`
+- `0 Aluminium Foil`
 
-\- `26 Plastic Wrapper`
+- `15 Metal Cans`
 
-\- `29 plastic straw`
+- `16 Metal Scraps`
 
+### Glass
 
+- `1 Broken Glass`
 
-\### Metal
+- `9 Glass Bottle`
 
+- `10 Glass Jars`
 
+### Paper/Cardboard
 
-\- `0 Aluminium Foil`
+- `4 Cardboard`
 
-\- `15 Metal Cans`
+- `14 Magazines`
 
-\- `16 Metal Scraps`
+- `18 Newspaper`
 
+- `19 Office Paper`
 
-
-\### Glass
-
-
-
-\- `1 Broken Glass`
-
-\- `9 Glass Bottle`
-
-\- `10 Glass Jars`
-
-
-
-\### Paper/Cardboard
-
-
-
-\- `4 Cardboard`
-
-\- `14 Magazines`
-
-\- `18 Newspaper`
-
-\- `19 Office Paper`
-
-\- `24 Paper`
-
-
+- `24 Paper`
 
 Unsupported classes:
 
+- `2 Bulbs`
 
+- `3 Cables`
 
-\- `2 Bulbs`
+- `5 Charger`
 
-\- `3 Cables`
+- `6 Cylindrical battery`
 
-\- `5 Charger`
+- `7 Earphone`
 
-\- `6 Cylindrical battery`
+- `8 Food Waste`
 
-\- `7 Earphone`
+- `12 Headphone`
 
-\- `8 Food Waste`
+- `13 Kitchen Waste`
 
-\- `12 Headphone`
+- `17 Mobile Phone`
 
-\- `13 Kitchen Waste`
+- `23 Paint Containers`
 
-\- `17 Mobile Phone`
+- `27 Pouch battery`
 
-\- `23 Paint Containers`
-
-\- `27 Pouch battery`
-
-\- `28 facemask`
-
-
+- `28 facemask`
 
 Policy:
 
+- Keep supported-only images.
 
+- Exclude supported-plus-unsupported images.
 
-\- Keep supported-only images.
+- Exclude unsupported-only images.
 
-\- Exclude supported-plus-unsupported images.
+- Exclude empty labels.
 
-\- Exclude unsupported-only images.
+- Exclude the entire image if any line is not standard five-token YOLO detection format.
 
-\- Exclude empty labels.
-
-\- Exclude the entire image if any line is not standard five-token YOLO detection format.
-
-\- Never repair polygon annotations inside the raw dataset.
-
-
+- Never repair polygon annotations inside the raw dataset.
 
 Supported-only audit before non-five-token filtering:
 
+- Images: 9,574
 
-
-\- Images: 9,574
-
-\- Annotations: 13,482
-
-
+- Annotations: 13,482
 
 Mapped counts before non-five-token filtering:
 
+- plastic: 6,527
 
+- paper_cardboard: 2,889
 
-\- plastic: 6,527
+- metal: 2,482
 
-\- paper\_cardboard: 2,889
-
-\- metal: 2,482
-
-\- glass: 1,584
-
-
+- glass: 1,584
 
 Annotation format:
 
+- Non-five-token lines: 325
 
+- Files affected: 205
 
-\- Non-five-token lines: 325
-
-\- Files affected: 205
-
-\- Supported-only images affected: 36
-
-
+- Supported-only images affected: 36
 
 The 36 affected supported-only images must be excluded completely.
 
-
-
 Duplicate audit:
 
+- Images hashed: 17,182
 
+- Unique SHA-256 hashes: 17,170
 
-\- Images hashed: 17,182
-
-\- Unique SHA-256 hashes: 17,170
-
-\- Exact duplicate hashes across train/valid: 4
-
-
+- Exact duplicate hashes across train/valid: 4
 
 Consistency:
 
+- Images without labels: 0
 
-
-\- Images without labels: 0
-
-\- Labels without images: 0
-
-
+- Labels without images: 0
 
 Status:
-
-
 
 `READY WITH FILTERS`
 
+---
 
-
-\---
-
-
-
-\## Source 3 — General Waste Data v4
-
-
+## Source 3 — General Waste Data v4
 
 Root:
 
-
-
-`data/raw/v2\_1\_sources/general\_waste\_data`
-
-
+`data/raw/v2_1_sources/general_waste_data`
 
 Metadata:
 
+- Version: 4
 
-
-\- Version: 4
-
-\- License: CC BY 4.0
-
-
+- License: CC BY 4.0
 
 Original images:
 
+- Train: 14,648
 
+- Valid: 2,098
 
-\- Train: 14,648
+- Test: 1,042
 
-\- Valid: 2,098
-
-\- Test: 1,042
-
-\- Total: 17,788
-
-
+- Total: 17,788
 
 Original annotations:
 
-
-
-\- 125,561
-
-
+- 125,561
 
 Excluded classes:
 
+- `0 BIODEGRADABLE`
 
-
-\- `0 BIODEGRADABLE`
-
-\- `2 CLOTH`
-
-
+- `2 CLOTH`
 
 Mapping:
 
+### Paper/Cardboard
 
+- `1 CARDBOARD`
 
-\### Paper/Cardboard
+- `21 PAPER`
 
+- `22 PAPER cup`
 
+### Glass
 
-\- `1 CARDBOARD`
+- `3 GLASS`
 
-\- `21 PAPER`
+- `4 GLASS bottle`
 
-\- `22 PAPER cup`
+- `5 GLASS bowl`
 
+- `6 GLASS broken`
 
+- `7 GLASS cap`
 
-\### Glass
+- `8 GLASS jar`
 
+- `9 GLASS plate`
 
+- `10 GLASS water`
 
-\- `3 GLASS`
+### Metal
 
-\- `4 GLASS bottle`
+- `11 METAL`
 
-\- `5 GLASS bowl`
+- `12 METAL Jar`
 
-\- `6 GLASS broken`
+- `13 METAL cane`
 
-\- `7 GLASS cap`
+- `14 METAL cap`
 
-\- `8 GLASS jar`
+- `15 METAL knife`
 
-\- `9 GLASS plate`
+- `16 METAL paper`
 
-\- `10 GLASS water`
+- `17 METAL plate`
 
+- `18 METAL scissor`
 
+- `19 METAL sheet`
 
-\### Metal
+- `20 METAL spoon`
 
+### Plastic
 
+- `23 PLASTIC`
 
-\- `11 METAL`
+- `24 PLASTIC bag`
 
-\- `12 METAL Jar`
+- `25 PLASTIC bottle`
 
-\- `13 METAL cane`
+- `26 PLASTIC can`
 
-\- `14 METAL cap`
+- `27 PLASTIC cane`
 
-\- `15 METAL knife`
+- `28 PLASTIC cap`
 
-\- `16 METAL paper`
+- `29 PLASTIC cup`
 
-\- `17 METAL plate`
+- `30 PLASTIC plate`
 
-\- `18 METAL scissor`
-
-\- `19 METAL sheet`
-
-\- `20 METAL spoon`
-
-
-
-\### Plastic
-
-
-
-\- `23 PLASTIC`
-
-\- `24 PLASTIC bag`
-
-\- `25 PLASTIC bottle`
-
-\- `26 PLASTIC can`
-
-\- `27 PLASTIC cane`
-
-\- `28 PLASTIC cap`
-
-\- `29 PLASTIC cup`
-
-\- `30 PLASTIC plate`
-
-\- `31 PLASTIC wrapper`
-
-
+- `31 PLASTIC wrapper`
 
 Policy:
 
+- Keep supported-only images.
 
+- Exclude the entire image if BIODEGRADABLE or CLOTH occurs.
 
-\- Keep supported-only images.
-
-\- Exclude the entire image if BIODEGRADABLE or CLOTH occurs.
-
-\- Exclude empty labels.
-
-
+- Exclude empty labels.
 
 Audit result:
 
+- Supported-only images: 13,897
 
-
-\- Supported-only images: 13,897
-
-\- Kept annotations: 46,915
-
-
+- Kept annotations: 46,915
 
 Mapped counts:
 
+- paper_cardboard: 14,816
 
+- glass: 12,798
 
-\- paper\_cardboard: 14,816
+- plastic: 9,917
 
-\- glass: 12,798
-
-\- plastic: 9,917
-
-\- metal: 9,384
-
-
+- metal: 9,384
 
 Quality:
 
+- Bad format: 0
 
+- Bad class IDs: 0
 
-\- Bad format: 0
+- Bad coordinates: 0
 
-\- Bad class IDs: 0
-
-\- Bad coordinates: 0
-
-\- Zero-size boxes: 0
-
-
+- Zero-size boxes: 0
 
 Duplicate audit:
 
+- Images: 17,788
 
+- Unique hashes: 17,788
 
-\- Images: 17,788
+- Duplicate copies: 0
 
-\- Unique hashes: 17,788
-
-\- Duplicate copies: 0
-
-\- Cross-split exact duplicates: 0
-
-
+- Cross-split exact duplicates: 0
 
 Status:
 
-
-
 `READY`
 
+---
 
-
-\---
-
-
-
-\## Existing Waste V2
-
-
+## Existing Waste V2
 
 Root:
 
-
-
-`data/processed/waste\_v2`
-
-
+`data/processed/waste_v2`
 
 Observed totals:
 
+- Final images: 32,292
 
+- Train: 28,423
 
-\- Final images: 32,292
+- Valid: 3,869
 
-\- Train: 28,423
+- Positive: 30,184
 
-\- Valid: 3,869
+- Controlled negatives: 2,108
 
-\- Positive: 30,184
-
-\- Controlled negatives: 2,108
-
-\- Family overlap: 0
-
-
+- Family overlap: 0
 
 Mapping:
 
+- `0 -> plastic`
 
+- `1 -> metal`
 
-\- `0 -> plastic`
+- `2 -> glass`
 
-\- `1 -> metal`
-
-\- `2 -> glass`
-
-\- `3 -> paper\_cardboard`
-
-
+- `3 -> paper_cardboard`
 
 V2 remains unchanged.
 
-
-
 Eligible existing controlled negatives may be retained.
 
+---
 
-
-\---
-
-
-
-\## Protected Evaluation Roots
-
-
+## Protected Evaluation Roots
 
 The following must never enter V2.1 train or validation:
 
+- `data/benchmarks/external_test_v1`
 
+- `data/benchmarks/reject_challenge_v1`
 
-\- `data/benchmarks/external\_test\_v1`
-
-\- `data/benchmarks/reject\_challenge\_v1`
-
-\- `data/benchmarks/real\_world\_v2\_1`
-
-
+- `data/benchmarks/real_world_v2_1`
 
 Protection must include:
 
+- Exact SHA-256 matching
 
+- Perceptual dHash + width + height matching
 
-\- Exact SHA-256 matching
+---
 
-\- Perceptual dHash + width + height matching
-
-
-
-\---
-
-
-
-\## Builder Policy Summary
-
-
+## Builder Policy Summary
 
 Waste V2.1 builder will:
 
+1. Combine Waste V2 and the three audited external datasets.
 
+2. Apply strict class mappings.
 
-1\. Combine Waste V2 and the three audited external datasets.
+3. Exclude mixed unsupported images entirely.
 
-2\. Apply strict class mappings.
+4. Exclude malformed/non-detection source labels according to policy.
 
-3\. Exclude mixed unsupported images entirely.
+5. Keep only eligible V2 controlled negatives.
 
-4\. Exclude malformed/non-detection source labels according to policy.
+6. Remove benchmark leakage.
 
-5\. Keep only eligible V2 controlled negatives.
+7. Remove exact duplicates.
 
-6\. Remove benchmark leakage.
+8. Remove perceptual duplicates.
 
-7\. Remove exact duplicates.
+9. Keep families in one split.
 
-8\. Remove perceptual duplicates.
+10. Rebuild train/valid with seed 26.
 
-9\. Keep families in one split.
+11. Produce only classes 0–3.
 
-10\. Rebuild train/valid with seed 26.
+12. Write manifest and build report.
 
-11\. Produce only classes 0–3.
-
-12\. Write manifest and build report.
-
-13\. Never modify raw datasets.
-
+13. Never modify raw datasets.

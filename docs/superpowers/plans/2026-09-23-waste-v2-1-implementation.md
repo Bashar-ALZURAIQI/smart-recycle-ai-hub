@@ -1,924 +1,633 @@
-\# Waste V2.1 Dataset Build and Training Implementation Plan
+# Waste V2.1 Dataset Build and Training Implementation Plan
 
-
-
-\## Goal
-
-
+## Goal
 
 Build a reproducible Waste V2.1 dataset from Waste V2 plus three audited external datasets, verify that the final dataset is clean and benchmark-safe, then fine-tune YOLO26n from the selected Waste V2 checkpoint.
 
-
-
-\## Starting Point
-
-
+## Starting Point
 
 Branch:
 
-
-
 `feature/waste-v2.1`
-
-
 
 Current remote baseline before V2.1 work:
 
-
-
 `0238518 merge: preserve Waste V2 commit history`
-
-
 
 Starting model:
 
-
-
-`runs/detect/waste\_v2\_yolo26n/weights/best.pt`
-
-
+`runs/detect/waste_v2_yolo26n/weights/best.pt`
 
 Final classes:
 
+- `0 plastic`
 
+- `1 metal`
 
-\- `0 plastic`
+- `2 glass`
 
-\- `1 metal`
-
-\- `2 glass`
-
-\- `3 paper\_cardboard`
-
-
+- `3 paper_cardboard`
 
 Reject remains decision-layer logic.
 
+---
 
+## Global Rules
 
-\---
+- Never modify raw datasets in place.
 
+- Never modify `data/processed/waste_v2`.
 
+- Never train on benchmark images.
 
-\## Global Rules
+- Never create a fifth YOLO class.
 
+- Never silently strip unsupported annotations from a mixed image.
 
+- New external-source unsupported images are excluded rather than used as negatives.
 
-\- Never modify raw datasets in place.
+- Existing V2 controlled negatives may remain eligible.
 
-\- Never modify `data/processed/waste\_v2`.
+- All final dataset construction must be deterministic.
 
-\- Never train on benchmark images.
+- Seed is 26.
 
-\- Never create a fifth YOLO class.
+- Validation target is approximately 12% by family.
 
-\- Never silently strip unsupported annotations from a mixed image.
+- Maximum controlled negative fraction is 20%.
 
-\- New external-source unsupported images are excluded rather than used as negatives.
+- Exact dedupe uses SHA-256.
 
-\- Existing V2 controlled negatives may remain eligible.
+- Perceptual dedupe uses exact `(dhash, width, height)` identity.
 
-\- All final dataset construction must be deterministic.
+- Roboflow augmentation families must not cross train/valid.
 
-\- Seed is 26.
+- Training starts from Waste V2 `best.pt`.
 
-\- Validation target is approximately 12% by family.
+---
 
-\- Maximum controlled negative fraction is 20%.
-
-\- Exact dedupe uses SHA-256.
-
-\- Perceptual dedupe uses exact `(dhash, width, height)` identity.
-
-\- Roboflow augmentation families must not cross train/valid.
-
-\- Training starts from Waste V2 `best.pt`.
-
-
-
-\---
-
-
-
-\## Task 1 — Documentation and Mapping Contract
-
-
+## Task 1 — Documentation and Mapping Contract
 
 Create:
 
+- `docs/superpowers/specs/2026-09-23-waste-v2-1-design.md`
 
+- `docs/superpowers/plans/2026-09-23-waste-v2-1-implementation.md`
 
-\- `docs/superpowers/specs/2026-09-23-waste-v2-1-design.md`
+- `docs/waste_v2_1_source_audit.md`
 
-\- `docs/superpowers/plans/2026-09-23-waste-v2-1-implementation.md`
-
-\- `docs/waste\_v2\_1\_source\_audit.md`
-
-\- `config/waste\_v2\_1\_mapping.yaml`
-
-
+- `config/waste_v2_1_mapping.yaml`
 
 Verify:
 
+- YAML parses successfully.
 
+- All four source IDs exist.
 
-\- YAML parses successfully.
+- Protected benchmark roots are configured.
 
-\- All four source IDs exist.
+- Source priority is configured.
 
-\- Protected benchmark roots are configured.
-
-\- Source priority is configured.
-
-\- Seed and validation fraction are correct.
-
-
+- Seed and validation fraction are correct.
 
 Commit:
-
-
 
 `docs: define Waste V2.1 dataset contract`
 
-
-
 Push the checkpoint to:
-
-
 
 `origin/feature/waste-v2.1`
 
+---
 
-
-\---
-
-
-
-\## Task 2 — Source Filtering and Mapping
-
-
+## Task 2 — Source Filtering and Mapping
 
 Create:
 
+- `scripts/build_waste_v2_1.py`
 
-
-\- `scripts/build\_waste\_v2\_1.py`
-
-\- `tests/test\_build\_waste\_v2\_1.py`
-
-
+- `tests/test_build_waste_v2_1.py`
 
 Implement:
 
+- Configuration loading
 
+- Source policy loading
 
-\- Configuration loading
+- Strict five-token YOLO detection parser
 
-\- Source policy loading
+- Whole-image unsupported-class exclusion
 
-\- Strict five-token YOLO detection parser
+- Empty-label policy
 
-\- Whole-image unsupported-class exclusion
+- Class remapping
 
-\- Empty-label policy
+- Roboflow family normalization
 
-\- Class remapping
+- Source discovery
 
-\- Roboflow family normalization
-
-\- Source discovery
-
-\- Image/label pairing
-
-
+- Image/label pairing
 
 Required tests:
 
+- WhiteMind supported mapping
 
+- WhiteMind mixed-image exclusion
 
-\- WhiteMind supported mapping
+- Dataset 1 non-five-token exclusion
 
-\- WhiteMind mixed-image exclusion
+- New-source empty-label exclusion
 
-\- Dataset 1 non-five-token exclusion
+- V2 negative preservation
 
-\- New-source empty-label exclusion
+- Roboflow `.rf.` family grouping
 
-\- V2 negative preservation
-
-\- Roboflow `.rf.` family grouping
-
-\- Source discovery using temporary fixtures
-
-
+- Source discovery using temporary fixtures
 
 Commit:
-
-
 
 `feat: add Waste V2.1 source filtering`
 
+---
 
-
-\---
-
-
-
-\## Task 3 — Benchmark Protection and Deduplication
-
-
+## Task 3 — Benchmark Protection and Deduplication
 
 Add to builder:
 
+- SHA-256 image fingerprint
 
+- dHash image fingerprint
 
-\- SHA-256 image fingerprint
+- Width/height fingerprint metadata
 
-\- dHash image fingerprint
+- Protected benchmark fingerprint collection
 
-\- Width/height fingerprint metadata
+- Exact benchmark exclusion
 
-\- Protected benchmark fingerprint collection
+- Perceptual benchmark exclusion
 
-\- Exact benchmark exclusion
+- Deterministic exact dedupe
 
-\- Perceptual benchmark exclusion
-
-\- Deterministic exact dedupe
-
-\- Deterministic perceptual dedupe
-
-
+- Deterministic perceptual dedupe
 
 Source priority:
 
+1. waste_v2
 
+2. general_waste_data
 
-1\. waste\_v2
+3. whitemind_yolo_waste
 
-2\. general\_waste\_data
-
-3\. whitemind\_yolo\_waste
-
-4\. waste\_detection\_dataset\_1
-
-
+4. waste_detection_dataset_1
 
 Tie-breaker:
 
-
-
 Stable image-path ordering.
-
-
 
 Required tests:
 
+- Protected exact match removed
 
+- Empty benchmark directory is safe
 
-\- Protected exact match removed
+- Duplicate winner follows source priority
 
-\- Empty benchmark directory is safe
+- Renamed identical image does not survive twice
 
-\- Duplicate winner follows source priority
-
-\- Renamed identical image does not survive twice
-
-\- Perceptual-key duplicate does not survive twice
-
-
+- Perceptual-key duplicate does not survive twice
 
 Commit:
-
-
 
 `feat: protect V2.1 from leakage and duplicates`
 
+---
 
-
-\---
-
-
-
-\## Task 4 — Controlled Negatives and Family-Safe Split
-
-
+## Task 4 — Controlled Negatives and Family-Safe Split
 
 Implement:
 
+- Controlled V2 negative selection
 
+- Maximum negative fraction 0.20
 
-\- Controlled V2 negative selection
+- Deterministic seed 26
 
-\- Maximum negative fraction 0.20
+- Family-aware train/valid split
 
-\- Deterministic seed 26
+- Validation source representation where practical
 
-\- Family-aware train/valid split
-
-\- Validation source representation where practical
-
-\- Zero family overlap
-
-
+- Zero family overlap
 
 Required tests:
 
+- Negative fraction cap
 
+- Family never crosses train/valid
 
-\- Negative fraction cap
+- Split is deterministic
 
-\- Family never crosses train/valid
+- Multiple-source validation representation
 
-\- Split is deterministic
-
-\- Multiple-source validation representation
-
-\- Single-family edge case
-
-
+- Single-family edge case
 
 Commit:
-
-
 
 `feat: add family-safe V2.1 splitting`
 
+---
 
-
-\---
-
-
-
-\## Task 5 — Final Dataset Writer and Build Report
-
-
+## Task 5 — Final Dataset Writer and Build Report
 
 Implement:
 
+- Deterministic collision-resistant output names
 
+- `train/images`
 
-\- Deterministic collision-resistant output names
+- `train/labels`
 
-\- `train/images`
+- `valid/images`
 
-\- `train/labels`
+- `valid/labels`
 
-\- `valid/images`
+- `data.yaml`
 
-\- `valid/labels`
+- `manifest.csv`
 
-\- `data.yaml`
+- `build_report.json`
 
-\- `manifest.csv`
+- Final output validation
 
-\- `build\_report.json`
+- Main build orchestration
 
-\- Final output validation
-
-\- Main build orchestration
-
-\- CLI
-
-
+- CLI
 
 Final output:
 
-
-
-`data/processed/waste\_v2\_1`
-
-
+`data/processed/waste_v2_1`
 
 Manifest columns:
 
+- source
 
+- source_split
 
-\- source
+- family_id
 
-\- source\_split
+- is_negative
 
-\- family\_id
+- source_image
 
-\- is\_negative
+- output_name
 
-\- source\_image
+- final_split
 
-\- output\_name
+- sha256
 
-\- final\_split
+- dhash
 
-\- sha256
+- width
 
-\- dhash
-
-\- width
-
-\- height
-
-
+- height
 
 Final validation must check:
 
+- Class IDs only 0–3
 
+- Five-token non-empty labels
 
-\- Class IDs only 0–3
+- Valid normalized coordinates
 
-\- Five-token non-empty labels
+- Positive width and height
 
-\- Valid normalized coordinates
+- Image/label count equality
 
-\- Positive width and height
+- Zero benchmark exact overlap
 
-\- Image/label count equality
+- Zero benchmark perceptual overlap
 
-\- Zero benchmark exact overlap
+- Zero family overlap
 
-\- Zero benchmark perceptual overlap
-
-\- Zero family overlap
-
-\- Zero invalid classes
-
-
+- Zero invalid classes
 
 Required end-to-end fixture test must verify:
 
+- Mixed unsupported image is excluded
 
+- Protected image is excluded
 
-\- Mixed unsupported image is excluded
+- Roboflow family does not cross splits
 
-\- Protected image is excluded
+- Output files exist
 
-\- Roboflow family does not cross splits
-
-\- Output files exist
-
-\- Final report has zero invariant failures
-
-
+- Final report has zero invariant failures
 
 Commit:
-
-
 
 `feat: build reproducible Waste V2.1 dataset`
 
+---
 
-
-\---
-
-
-
-\## Task 6 — Real Dataset Build
-
-
+## Task 6 — Real Dataset Build
 
 Before build:
 
+- Verify working tree
 
+- Verify all raw source roots exist
 
-\- Verify working tree
+- Verify Waste V2 exists
 
-\- Verify all raw source roots exist
-
-\- Verify Waste V2 exists
-
-\- Verify benchmark roots
-
-
+- Verify benchmark roots
 
 Run:
 
-
-
-`python scripts\\build\_waste\_v2\_1.py`
-
-
+`python scripts\build_waste_v2_1.py`
 
 Expected output:
 
-
-
-`data/processed/waste\_v2\_1`
-
-
+`data/processed/waste_v2_1`
 
 Inspect:
 
+- Build report
 
+- Train images
 
-\- Build report
+- Valid images
 
-\- Train images
+- Positive images
 
-\- Valid images
+- Negative images
 
-\- Positive images
+- Class distribution
 
-\- Negative images
+- Source distribution
 
-\- Class distribution
+- Dedupe removals
 
-\- Source distribution
+- Benchmark removals
 
-\- Dedupe removals
-
-\- Benchmark removals
-
-\- Family overlap
-
-
+- Family overlap
 
 Create:
 
-
-
-`docs/waste\_v2\_1\_dataset\_report.md`
-
-
+`docs/waste_v2_1_dataset_report.md`
 
 Run:
 
+- Builder test suite
 
-
-\- Builder test suite
-
-\- Full project test suite
-
-
+- Full project test suite
 
 Verify raw/generated data are not accidentally staged.
 
-
-
 Commit:
-
-
 
 `docs: record Waste V2.1 dataset build`
 
-
-
 Push pre-training checkpoint to:
-
-
 
 `origin/feature/waste-v2.1`
 
+---
 
-
-\---
-
-
-
-\## Task 7 — Training Workflow
-
-
+## Task 7 — Training Workflow
 
 Create:
 
+- `scripts/train_waste_v2_1.py`
 
-
-\- `scripts/train\_waste\_v2\_1.py`
-
-\- `tests/test\_train\_waste\_v2\_1.py`
-
-
+- `tests/test_train_waste_v2_1.py`
 
 Training dataset:
 
-
-
-`data/processed/waste\_v2\_1/data.yaml`
-
-
+`data/processed/waste_v2_1/data.yaml`
 
 Starting checkpoint:
 
-
-
-`runs/detect/waste\_v2\_yolo26n/weights/best.pt`
-
-
+`runs/detect/waste_v2_yolo26n/weights/best.pt`
 
 Implement preflight:
 
+- Dataset exists
 
+- Train image/label counts match
 
-\- Dataset exists
+- Valid image/label counts match
 
-\- Train image/label counts match
+- Non-empty labels have exactly five tokens
 
-\- Valid image/label counts match
+- Classes are only 0–3
 
-\- Non-empty labels have exactly five tokens
+- Coordinates are valid
 
-\- Classes are only 0–3
+- Every class exists in train
 
-\- Coordinates are valid
-
-\- Every class exists in train
-
-\- Every class exists in valid
-
-
+- Every class exists in valid
 
 Implement GPU verification:
 
+- CUDA must be available
 
+- CPU fallback is forbidden
 
-\- CUDA must be available
+- Print GPU name
 
-\- CPU fallback is forbidden
-
-\- Print GPU name
-
-\- Print available total VRAM
-
-
+- Print available total VRAM
 
 Pilot:
 
+- 1 epoch
 
+- Full training split
 
-\- 1 epoch
+- Batch 8
 
-\- Full training split
+- Image size 640
 
-\- Batch 8
+- Workers 0
 
-\- Image size 640
+- Cache false
 
-\- Workers 0
+- Seed 26
 
-\- Cache false
+- Deterministic true
 
-\- Seed 26
+- AMP true
 
-\- Deterministic true
+- Optimizer auto
 
-\- AMP true
-
-\- Optimizer auto
-
-\- Output name `waste\_v2\_1\_pilot`
-
-
+- Output name `waste_v2_1_pilot`
 
 Full:
 
+- Maximum 11 epochs
 
+- Patience 3
 
-\- Maximum 11 epochs
+- Batch selected by pilot
 
-\- Patience 3
+- Image size 640
 
-\- Batch selected by pilot
+- Workers 0
 
-\- Image size 640
+- Cache false
 
-\- Workers 0
+- Seed 26
 
-\- Cache false
+- Deterministic true
 
-\- Seed 26
+- AMP true
 
-\- Deterministic true
+- Optimizer auto
 
-\- AMP true
-
-\- Optimizer auto
-
-\- Output name `waste\_v2\_1\_yolo26n`
-
-
+- Output name `waste_v2_1_yolo26n`
 
 Pilot and full run both start from the original Waste V2 `best.pt`.
 
-
-
 Do not start the full run from pilot weights.
-
-
 
 Required tests:
 
+- Preflight class counts
 
+- Invalid label rejection
 
-\- Preflight class counts
+- Pilot argument selection
 
-\- Invalid label rejection
-
-\- Pilot argument selection
-
-\- Full argument selection
-
-
+- Full argument selection
 
 Commit:
-
-
 
 `feat: add Waste V2.1 training workflow`
 
-
-
 Push checkpoint to:
-
-
 
 `origin/feature/waste-v2.1`
 
+---
 
-
-\---
-
-
-
-\## Task 8 — Pilot and Full Training
-
-
+## Task 8 — Pilot and Full Training
 
 First run all tests.
 
-
-
 Confirm starting checkpoint:
 
-
-
-`runs/detect/waste\_v2\_yolo26n/weights/best.pt`
-
-
+`runs/detect/waste_v2_yolo26n/weights/best.pt`
 
 Run pilot:
 
-
-
-`python scripts\\train\_waste\_v2\_1.py --mode pilot --batch 8`
-
-
+`python scripts\train_waste_v2_1.py --mode pilot --batch 8`
 
 If and only if CUDA OOM occurs:
 
+- Close GPU-heavy programs.
 
+- Check `nvidia-smi`.
 
-\- Close GPU-heavy programs.
-
-\- Check `nvidia-smi`.
-
-\- Retry once with batch 4.
-
-
+- Retry once with batch 4.
 
 Do not change image size or model.
 
-
-
 Record:
 
+- Pilot wall time
 
+- Epoch time
 
-\- Pilot wall time
+- Validation time
 
-\- Epoch time
+- Selected batch
 
-\- Validation time
+- GPU memory usage if reported
 
-\- Selected batch
-
-\- GPU memory usage if reported
-
-\- Loss behavior
-
-
+- Loss behavior
 
 If pilot succeeds with batch 8:
 
-
-
-`python scripts\\train\_waste\_v2\_1.py --mode full --batch 8`
-
-
+`python scripts\train_waste_v2_1.py --mode full --batch 8`
 
 If pilot requires batch 4:
 
-
-
-`python scripts\\train\_waste\_v2\_1.py --mode full --batch 4`
-
-
+`python scripts\train_waste_v2_1.py --mode full --batch 4`
 
 Full training settings:
 
+- Start checkpoint: Waste V2 best.pt
 
+- Maximum epochs: 11
 
-\- Start checkpoint: Waste V2 best.pt
+- Patience: 3
 
-\- Maximum epochs: 11
+- Optimizer: auto
 
-\- Patience: 3
+- Image size: 640
 
-\- Optimizer: auto
+- Seed: 26
 
-\- Image size: 640
+- Deterministic: true
 
-\- Seed: 26
+- AMP: true
 
-\- Deterministic: true
+- Workers: 0
 
-\- AMP: true
-
-\- Workers: 0
-
-\- Cache: false
-
-
+- Cache: false
 
 Required outputs:
 
+- `runs/detect/waste_v2_1_yolo26n/weights/best.pt`
 
+- `runs/detect/waste_v2_1_yolo26n/weights/last.pt`
 
-\- `runs/detect/waste\_v2\_1\_yolo26n/weights/best.pt`
-
-\- `runs/detect/waste\_v2\_1\_yolo26n/weights/last.pt`
-
-\- `runs/detect/waste\_v2\_1\_yolo26n/results.csv`
-
-
+- `runs/detect/waste_v2_1_yolo26n/results.csv`
 
 Verify:
 
+- `best.pt` loads with Ultralytics.
 
-
-\- `best.pt` loads with Ultralytics.
-
-\- Model class names are correct.
-
-
+- Model class names are correct.
 
 Create:
 
-
-
-`docs/waste\_v2\_1\_training\_report.md`
-
-
+`docs/waste_v2_1_training_report.md`
 
 Record only observed training values.
 
-
-
 Run full tests again.
-
-
 
 Commit:
 
-
-
 `docs: record Waste V2.1 training`
-
-
 
 Push final training-complete branch.
 
+---
 
-
-\---
-
-
-
-\## Final Training Completion Gate
-
-
+## Final Training Completion Gate
 
 V2.1 training is complete only when:
 
+- Dataset builder passes.
 
+- Benchmark leakage is zero.
 
-\- Dataset builder passes.
+- Family overlap is zero.
 
-\- Benchmark leakage is zero.
+- Final classes are correct.
 
-\- Family overlap is zero.
+- Full project test suite passes.
 
-\- Final classes are correct.
+- Pilot succeeds.
 
-\- Full project test suite passes.
+- Full training completes.
 
-\- Pilot succeeds.
+- `best.pt` exists.
 
-\- Full training completes.
+- `last.pt` exists.
 
-\- `best.pt` exists.
+- `results.csv` exists.
 
-\- `last.pt` exists.
+- `best.pt` loads successfully.
 
-\- `results.csv` exists.
-
-\- `best.pt` loads successfully.
-
-\- Training report is committed.
-
+- Training report is committed.
