@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
+
+from PIL import Image
 
 
 IMAGE_EXTENSIONS = {
@@ -36,6 +39,28 @@ class CandidateRecord:
     is_negative: bool
 
 
+@dataclass(frozen=True)
+class ImageFingerprint:
+    sha256: str
+    dhash: str
+    width: int
+    height: int
+
+
+@dataclass(frozen=True)
+class DeduplicationResult:
+    records: list[CandidateRecord]
+    exact_removed: int
+    perceptual_removed: int
+
+
+@dataclass(frozen=True)
+class BenchmarkProtectionResult:
+    records: list[CandidateRecord]
+    exact_removed: int
+    perceptual_removed: int
+
+
 def family_id_for_image(
     source_id: str,
     image_path: Path,
@@ -52,6 +77,264 @@ def family_id_for_image(
     )
 
     return f"{source_id}:{stem}"
+
+
+def compute_dhash(
+    image: Image.Image,
+) -> str:
+    grayscale = image.convert("L")
+
+    resized = grayscale.resize(
+        (9, 8),
+        Image.Resampling.LANCZOS,
+    )
+
+    get_pixels = getattr(
+        resized,
+        "get_flattened_data",
+        resized.getdata,
+    )
+
+    pixels = list(
+        get_pixels()
+    )
+
+    bits: list[int] = []
+
+    for row in range(8):
+        row_start = row * 9
+
+        for column in range(8):
+            left = pixels[
+                row_start + column
+            ]
+
+            right = pixels[
+                row_start + column + 1
+            ]
+
+            bits.append(
+                1
+                if left > right
+                else 0
+            )
+
+    value = 0
+
+    for bit in bits:
+        value = (
+            value << 1
+        ) | bit
+
+    return f"{value:016x}"
+
+
+def image_fingerprint(
+    image_path: Path,
+) -> ImageFingerprint:
+    image_path = Path(image_path)
+
+    sha256 = hashlib.sha256(
+        image_path.read_bytes()
+    ).hexdigest()
+
+    with Image.open(image_path) as image:
+        width, height = image.size
+
+        dhash = compute_dhash(
+            image
+        )
+
+    return ImageFingerprint(
+        sha256=sha256,
+        dhash=dhash,
+        width=width,
+        height=height,
+    )
+
+
+def collect_benchmark_fingerprints(
+    benchmark_roots: list[Path],
+) -> list[ImageFingerprint]:
+    fingerprints: list[ImageFingerprint] = []
+
+    for benchmark_root in benchmark_roots:
+        benchmark_root = Path(
+            benchmark_root
+        )
+
+        for image_path in sorted(
+            benchmark_root.rglob("*")
+        ):
+            if not image_path.is_file():
+                continue
+
+            if (
+                image_path.suffix.lower()
+                not in IMAGE_EXTENSIONS
+            ):
+                continue
+
+            fingerprints.append(
+                image_fingerprint(
+                    image_path
+                )
+            )
+
+    return fingerprints
+
+
+def benchmark_match_kind(
+    candidate_fingerprint: ImageFingerprint,
+    benchmark_fingerprints: list[ImageFingerprint],
+) -> str | None:
+    for benchmark in benchmark_fingerprints:
+        if (
+            candidate_fingerprint.sha256
+            == benchmark.sha256
+        ):
+            return "exact"
+
+    for benchmark in benchmark_fingerprints:
+        if (
+            candidate_fingerprint.dhash
+            == benchmark.dhash
+            and candidate_fingerprint.width
+            == benchmark.width
+            and candidate_fingerprint.height
+            == benchmark.height
+        ):
+            return "perceptual_exact"
+
+    return None
+
+
+def protect_records_from_benchmarks(
+    records: list[CandidateRecord],
+    benchmark_fingerprints: list[ImageFingerprint],
+) -> BenchmarkProtectionResult:
+    kept_records: list[CandidateRecord] = []
+
+    exact_removed = 0
+    perceptual_removed = 0
+
+    for record in records:
+        fingerprint = image_fingerprint(
+            record.image_path
+        )
+
+        match_kind = benchmark_match_kind(
+            fingerprint,
+            benchmark_fingerprints,
+        )
+
+        if match_kind == "exact":
+            exact_removed += 1
+            continue
+
+        if match_kind == "perceptual_exact":
+            perceptual_removed += 1
+            continue
+
+        kept_records.append(
+            record
+        )
+
+    return BenchmarkProtectionResult(
+        records=kept_records,
+        exact_removed=exact_removed,
+        perceptual_removed=perceptual_removed,
+    )
+
+
+def deduplicate_records(
+    records: list[CandidateRecord],
+    source_priority: list[str],
+) -> DeduplicationResult:
+    priority_by_source = {
+        source_id: index
+        for index, source_id in enumerate(
+            source_priority
+        )
+    }
+
+    for record in records:
+        if record.source not in priority_by_source:
+            raise ValueError(
+                "Source is missing from source_priority: "
+                f"{record.source!r}"
+            )
+
+    ordered_records = sorted(
+        records,
+        key=lambda record: (
+            priority_by_source[
+                record.source
+            ],
+            record.source,
+            record.image_path.as_posix(),
+        ),
+    )
+
+    exact_unique_records: list[
+        tuple[CandidateRecord, ImageFingerprint]
+    ] = []
+
+    seen_sha256: set[str] = set()
+    exact_removed = 0
+
+    for record in ordered_records:
+        fingerprint = image_fingerprint(
+            record.image_path
+        )
+
+        if fingerprint.sha256 in seen_sha256:
+            exact_removed += 1
+            continue
+
+        seen_sha256.add(
+            fingerprint.sha256
+        )
+
+        exact_unique_records.append(
+            (
+                record,
+                fingerprint,
+            )
+        )
+
+    kept_records: list[CandidateRecord] = []
+
+    seen_perceptual: set[
+        tuple[str, int, int]
+    ] = set()
+
+    perceptual_removed = 0
+
+    for record, fingerprint in exact_unique_records:
+        perceptual_key = (
+            fingerprint.dhash,
+            fingerprint.width,
+            fingerprint.height,
+        )
+
+        if perceptual_key in seen_perceptual:
+            perceptual_removed += 1
+            continue
+
+        seen_perceptual.add(
+            perceptual_key
+        )
+
+        kept_records.append(
+            record
+        )
+
+    return DeduplicationResult(
+        records=kept_records,
+        exact_removed=exact_removed,
+        perceptual_removed=perceptual_removed,
+    )
 
 
 def remap_image_labels(
@@ -192,7 +475,9 @@ def discover_source_records(
                 f"{labels_without_images[:10]}"
             )
 
-        paired_stems = sorted(image_stems)
+        paired_stems = sorted(
+            image_stems
+        )
 
         for stem in paired_stems:
             image_path = images_by_stem[stem]
