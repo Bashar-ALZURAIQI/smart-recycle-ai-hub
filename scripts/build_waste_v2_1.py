@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import random
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -59,6 +60,19 @@ class BenchmarkProtectionResult:
     records: list[CandidateRecord]
     exact_removed: int
     perceptual_removed: int
+
+
+@dataclass(frozen=True)
+class NegativeLimitResult:
+    records: list[CandidateRecord]
+    negatives_kept: int
+    negatives_removed: int
+
+
+@dataclass(frozen=True)
+class FamilySplitResult:
+    train_records: list[CandidateRecord]
+    valid_records: list[CandidateRecord]
 
 
 def family_id_for_image(
@@ -132,13 +146,17 @@ def compute_dhash(
 def image_fingerprint(
     image_path: Path,
 ) -> ImageFingerprint:
-    image_path = Path(image_path)
+    image_path = Path(
+        image_path
+    )
 
     sha256 = hashlib.sha256(
         image_path.read_bytes()
     ).hexdigest()
 
-    with Image.open(image_path) as image:
+    with Image.open(
+        image_path
+    ) as image:
         width, height = image.size
 
         dhash = compute_dhash(
@@ -156,7 +174,9 @@ def image_fingerprint(
 def collect_benchmark_fingerprints(
     benchmark_roots: list[Path],
 ) -> list[ImageFingerprint]:
-    fingerprints: list[ImageFingerprint] = []
+    fingerprints: list[
+        ImageFingerprint
+    ] = []
 
     for benchmark_root in benchmark_roots:
         benchmark_root = Path(
@@ -213,7 +233,9 @@ def protect_records_from_benchmarks(
     records: list[CandidateRecord],
     benchmark_fingerprints: list[ImageFingerprint],
 ) -> BenchmarkProtectionResult:
-    kept_records: list[CandidateRecord] = []
+    kept_records: list[
+        CandidateRecord
+    ] = []
 
     exact_removed = 0
     perceptual_removed = 0
@@ -259,7 +281,10 @@ def deduplicate_records(
     }
 
     for record in records:
-        if record.source not in priority_by_source:
+        if (
+            record.source
+            not in priority_by_source
+        ):
             raise ValueError(
                 "Source is missing from source_priority: "
                 f"{record.source!r}"
@@ -277,7 +302,10 @@ def deduplicate_records(
     )
 
     exact_unique_records: list[
-        tuple[CandidateRecord, ImageFingerprint]
+        tuple[
+            CandidateRecord,
+            ImageFingerprint,
+        ]
     ] = []
 
     seen_sha256: set[str] = set()
@@ -288,7 +316,10 @@ def deduplicate_records(
             record.image_path
         )
 
-        if fingerprint.sha256 in seen_sha256:
+        if (
+            fingerprint.sha256
+            in seen_sha256
+        ):
             exact_removed += 1
             continue
 
@@ -303,22 +334,34 @@ def deduplicate_records(
             )
         )
 
-    kept_records: list[CandidateRecord] = []
+    kept_records: list[
+        CandidateRecord
+    ] = []
 
     seen_perceptual: set[
-        tuple[str, int, int]
+        tuple[
+            str,
+            int,
+            int,
+        ]
     ] = set()
 
     perceptual_removed = 0
 
-    for record, fingerprint in exact_unique_records:
+    for (
+        record,
+        fingerprint,
+    ) in exact_unique_records:
         perceptual_key = (
             fingerprint.dhash,
             fingerprint.width,
             fingerprint.height,
         )
 
-        if perceptual_key in seen_perceptual:
+        if (
+            perceptual_key
+            in seen_perceptual
+        ):
             perceptual_removed += 1
             continue
 
@@ -337,10 +380,178 @@ def deduplicate_records(
     )
 
 
+def limit_negative_fraction(
+    records: list[CandidateRecord],
+    max_negative_fraction: float,
+    seed: int,
+) -> NegativeLimitResult:
+    if not (
+        0.0
+        <= max_negative_fraction
+        < 1.0
+    ):
+        raise ValueError(
+            "max_negative_fraction must be "
+            "greater than or equal to 0 "
+            "and less than 1."
+        )
+
+    positives = [
+        record
+        for record in records
+        if not record.is_negative
+    ]
+
+    negatives = [
+        record
+        for record in records
+        if record.is_negative
+    ]
+
+    max_negatives = int(
+        (
+            max_negative_fraction
+            * len(positives)
+        )
+        / (
+            1.0
+            - max_negative_fraction
+        )
+    )
+
+    negatives_to_keep = min(
+        len(negatives),
+        max_negatives,
+    )
+
+    ordered_negatives = sorted(
+        negatives,
+        key=lambda record: (
+            record.source,
+            record.image_path.as_posix(),
+        ),
+    )
+
+    rng = random.Random(
+        seed
+    )
+
+    rng.shuffle(
+        ordered_negatives
+    )
+
+    kept_negatives = (
+        ordered_negatives[
+            :negatives_to_keep
+        ]
+    )
+
+    kept_records = (
+        positives
+        + kept_negatives
+    )
+
+    return NegativeLimitResult(
+        records=kept_records,
+        negatives_kept=len(
+            kept_negatives
+        ),
+        negatives_removed=(
+            len(negatives)
+            - len(kept_negatives)
+        ),
+    )
+
+
+def family_safe_split(
+    records: list[CandidateRecord],
+    valid_fraction: float,
+    seed: int,
+) -> FamilySplitResult:
+    if not (
+        0.0
+        < valid_fraction
+        < 1.0
+    ):
+        raise ValueError(
+            "valid_fraction must be "
+            "greater than 0 "
+            "and less than 1."
+        )
+
+    families: dict[
+        str,
+        list[CandidateRecord],
+    ] = {}
+
+    for record in records:
+        family_id = family_id_for_image(
+            record.source,
+            record.image_path,
+        )
+
+        families.setdefault(
+            family_id,
+            [],
+        ).append(
+            record
+        )
+
+    ordered_family_ids = sorted(
+        families
+    )
+
+    rng = random.Random(
+        seed
+    )
+
+    rng.shuffle(
+        ordered_family_ids
+    )
+
+    target_valid_records = round(
+        len(records)
+        * valid_fraction
+    )
+
+    train_records: list[
+        CandidateRecord
+    ] = []
+
+    valid_records: list[
+        CandidateRecord
+    ] = []
+
+    for family_id in ordered_family_ids:
+        family_records = families[
+            family_id
+        ]
+
+        if (
+            len(valid_records)
+            < target_valid_records
+        ):
+            valid_records.extend(
+                family_records
+            )
+        else:
+            train_records.extend(
+                family_records
+            )
+
+    return FamilySplitResult(
+        train_records=train_records,
+        valid_records=valid_records,
+    )
+
+
 def remap_image_labels(
     lines: list[str],
     policy: SourcePolicy,
-) -> tuple[list[str], str | None]:
+) -> tuple[
+    list[str],
+    str | None,
+]:
     normalized_lines = [
         line.strip()
         for line in lines
@@ -348,30 +559,60 @@ def remap_image_labels(
     ]
 
     if not normalized_lines:
-        if policy.preserve_empty_labels:
+        if (
+            policy.preserve_empty_labels
+        ):
             return [], None
 
         return [], "empty_label"
 
-    parsed: list[tuple[int, float, float, float, float]] = []
+    parsed: list[
+        tuple[
+            int,
+            float,
+            float,
+            float,
+            float,
+        ]
+    ] = []
 
     for line in normalized_lines:
         parts = line.split()
 
         if len(parts) != 5:
-            if policy.reject_non_detection_labels:
-                return [], "non_detection_label"
+            if (
+                policy.reject_non_detection_labels
+            ):
+                return (
+                    [],
+                    "non_detection_label",
+                )
 
             raise ValueError(
-                f"Expected 5 YOLO tokens, got {len(parts)}: {line!r}"
+                "Expected 5 YOLO tokens, "
+                f"got {len(parts)}: "
+                f"{line!r}"
             )
 
-        source_class = int(parts[0])
+        source_class = int(
+            parts[0]
+        )
 
-        x_center = float(parts[1])
-        y_center = float(parts[2])
-        width = float(parts[3])
-        height = float(parts[4])
+        x_center = float(
+            parts[1]
+        )
+
+        y_center = float(
+            parts[2]
+        )
+
+        width = float(
+            parts[3]
+        )
+
+        height = float(
+            parts[4]
+        )
 
         parsed.append(
             (
@@ -383,10 +624,21 @@ def remap_image_labels(
             )
         )
 
-    if policy.exclude_if_any_unsupported:
-        for source_class, *_ in parsed:
-            if source_class in policy.unsupported_class_ids:
-                return [], "unsupported_class"
+    if (
+        policy.exclude_if_any_unsupported
+    ):
+        for (
+            source_class,
+            *_,
+        ) in parsed:
+            if (
+                source_class
+                in policy.unsupported_class_ids
+            ):
+                return (
+                    [],
+                    "unsupported_class",
+                )
 
     remapped: list[str] = []
 
@@ -397,7 +649,11 @@ def remap_image_labels(
         width,
         height,
     ) in parsed:
-        target_class = policy.class_map[source_class]
+        target_class = (
+            policy.class_map[
+                source_class
+            ]
+        )
 
         remapped.append(
             f"{target_class} "
@@ -415,60 +671,118 @@ def discover_source_records(
 ) -> list[CandidateRecord]:
     if policy.root is None:
         raise ValueError(
-            f"Source {policy.source_id!r} has no root directory."
+            f"Source "
+            f"{policy.source_id!r} "
+            "has no root directory."
         )
 
-    records: list[CandidateRecord] = []
+    records: list[
+        CandidateRecord
+    ] = []
 
-    for split_name in ("train", "valid", "test"):
-        images_dir = policy.root / split_name / "images"
-        labels_dir = policy.root / split_name / "labels"
+    for split_name in (
+        "train",
+        "valid",
+        "test",
+    ):
+        images_dir = (
+            policy.root
+            / split_name
+            / "images"
+        )
 
-        images_exists = images_dir.exists()
-        labels_exists = labels_dir.exists()
+        labels_dir = (
+            policy.root
+            / split_name
+            / "labels"
+        )
 
-        if not images_exists and not labels_exists:
+        images_exists = (
+            images_dir.exists()
+        )
+
+        labels_exists = (
+            labels_dir.exists()
+        )
+
+        if (
+            not images_exists
+            and not labels_exists
+        ):
             continue
 
-        if images_exists != labels_exists:
+        if (
+            images_exists
+            != labels_exists
+        ):
             raise ValueError(
                 "Image/label mismatch "
-                f"for source={policy.source_id!r}, "
-                f"split={split_name!r}: "
-                f"images_dir_exists={images_exists}, "
-                f"labels_dir_exists={labels_exists}"
+                f"for source="
+                f"{policy.source_id!r}, "
+                f"split="
+                f"{split_name!r}: "
+                f"images_dir_exists="
+                f"{images_exists}, "
+                f"labels_dir_exists="
+                f"{labels_exists}"
             )
 
         images_by_stem = {
             path.stem: path
-            for path in sorted(images_dir.iterdir())
-            if path.is_file()
-            and path.suffix.lower() in IMAGE_EXTENSIONS
+            for path in sorted(
+                images_dir.iterdir()
+            )
+            if (
+                path.is_file()
+                and (
+                    path.suffix.lower()
+                    in IMAGE_EXTENSIONS
+                )
+            )
         }
 
         labels_by_stem = {
             path.stem: path
-            for path in sorted(labels_dir.iterdir())
-            if path.is_file()
-            and path.suffix.lower() == ".txt"
+            for path in sorted(
+                labels_dir.iterdir()
+            )
+            if (
+                path.is_file()
+                and (
+                    path.suffix.lower()
+                    == ".txt"
+                )
+            )
         }
 
-        image_stems = set(images_by_stem)
-        label_stems = set(labels_by_stem)
+        image_stems = set(
+            images_by_stem
+        )
+
+        label_stems = set(
+            labels_by_stem
+        )
 
         images_without_labels = sorted(
-            image_stems - label_stems
+            image_stems
+            - label_stems
         )
 
         labels_without_images = sorted(
-            label_stems - image_stems
+            label_stems
+            - image_stems
         )
 
-        if images_without_labels or labels_without_images:
+        if (
+            images_without_labels
+            or labels_without_images
+        ):
             raise ValueError(
                 "Image/label mismatch "
-                f"for source={policy.source_id!r}, "
-                f"split={split_name!r}: "
+                f"for source="
+                f"{policy.source_id!r}, "
+                f"split="
+                f"{split_name!r}: "
                 f"images_without_labels="
                 f"{images_without_labels[:10]}, "
                 f"labels_without_images="
@@ -480,15 +794,29 @@ def discover_source_records(
         )
 
         for stem in paired_stems:
-            image_path = images_by_stem[stem]
-            label_path = labels_by_stem[stem]
+            image_path = (
+                images_by_stem[
+                    stem
+                ]
+            )
 
-            raw_lines = label_path.read_text(
-                encoding="utf-8",
-                errors="replace",
-            ).splitlines()
+            label_path = (
+                labels_by_stem[
+                    stem
+                ]
+            )
 
-            labels, reason = remap_image_labels(
+            raw_lines = (
+                label_path.read_text(
+                    encoding="utf-8",
+                    errors="replace",
+                ).splitlines()
+            )
+
+            (
+                labels,
+                reason,
+            ) = remap_image_labels(
                 raw_lines,
                 policy,
             )
@@ -498,12 +826,22 @@ def discover_source_records(
 
             records.append(
                 CandidateRecord(
-                    source=policy.source_id,
-                    source_split=split_name,
-                    image_path=image_path,
-                    label_path=label_path,
+                    source=(
+                        policy.source_id
+                    ),
+                    source_split=(
+                        split_name
+                    ),
+                    image_path=(
+                        image_path
+                    ),
+                    label_path=(
+                        label_path
+                    ),
                     labels=labels,
-                    is_negative=not labels,
+                    is_negative=(
+                        not labels
+                    ),
                 )
             )
 
