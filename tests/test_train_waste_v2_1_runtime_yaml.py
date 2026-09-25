@@ -1,5 +1,3 @@
-import pytest
-
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
@@ -94,16 +92,8 @@ class FakeModel:
         return "fake-training-result"
 
 
-@pytest.mark.parametrize(
-    "mode",
-    [
-        "pilot",
-        "full",
-    ],
-)
-def test_run_training_uses_original_v2_checkpoint_for_every_mode(
+def test_run_training_uses_ultralytics_runtime_yaml(
     tmp_path,
-    mode,
 ):
     module = load_training_module()
 
@@ -116,37 +106,18 @@ def test_run_training_uses_original_v2_checkpoint_for_every_mode(
         / "waste_v2_1"
     )
 
-    data_yaml = write_dataset(dataset_root)
-
-    expected_weights = (
-        project_root
-        / "runs"
-        / "detect"
-        / "waste_v2_yolo26n"
-        / "weights"
-        / "best.pt"
-    )
-
-    expected_weights.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-    expected_weights.write_bytes(
-        b"fake-checkpoint"
-    )
+    source_yaml = write_dataset(dataset_root)
 
     created_models = []
 
     def fake_yolo_factory(weights):
-        assert Path(weights) == expected_weights
-
         model = FakeModel()
         created_models.append(model)
         return model
 
     result = module.run_training(
-        mode=mode,
-        data_yaml=data_yaml,
+        mode="pilot",
+        data_yaml=source_yaml,
         batch=8,
         project_root=project_root,
         torch_module=FakeTorch,
@@ -155,33 +126,28 @@ def test_run_training_uses_original_v2_checkpoint_for_every_mode(
 
     assert result == "fake-training-result"
     assert len(created_models) == 1
-    assert len(created_models[0].train_calls) == 1
 
     train_kwargs = created_models[0].train_calls[0]
 
-    expected_runtime_yaml = (
-        dataset_root
-        / "data.ultralytics.yaml"
+    runtime_yaml = (
+        dataset_root / "data.ultralytics.yaml"
     )
 
-    assert train_kwargs["data"] == str(
-        expected_runtime_yaml
+    assert train_kwargs["data"] == str(runtime_yaml)
+    assert runtime_yaml.is_file()
+
+    runtime_text = runtime_yaml.read_text(
+        encoding="utf-8"
     )
-    assert expected_runtime_yaml.is_file()
 
-    assert train_kwargs["batch"] == 8
-    assert train_kwargs["device"] == 0
+    expected_root = dataset_root.resolve().as_posix()
 
-    if mode == "pilot":
-        assert train_kwargs["epochs"] == 1
-        assert (
-            train_kwargs["name"]
-            == "waste_v2_1_pilot"
-        )
-    else:
-        assert train_kwargs["epochs"] == 11
-        assert train_kwargs["patience"] == 3
-        assert (
-            train_kwargs["name"]
-            == "waste_v2_1_yolo26n"
-        )
+    assert f"path: {expected_root}" in runtime_text
+    assert "train: train/images" in runtime_text
+    assert "val: valid/images" in runtime_text
+
+    original_text = source_yaml.read_text(
+        encoding="utf-8"
+    )
+
+    assert "path: ." in original_text

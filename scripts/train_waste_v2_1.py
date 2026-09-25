@@ -49,6 +49,48 @@ def get_base_weights(project_root: Path) -> Path:
     )
 
 
+def prepare_ultralytics_data_yaml(
+    source_yaml: Path,
+) -> Path:
+    source_yaml = Path(source_yaml)
+
+    if not source_yaml.is_file():
+        raise ValueError(
+            f"data.yaml does not exist: {source_yaml}"
+        )
+
+    dataset_root = source_yaml.parent.resolve()
+    runtime_yaml = dataset_root / "data.ultralytics.yaml"
+
+    source_lines = source_yaml.read_text(
+        encoding="utf-8"
+    ).splitlines()
+
+    runtime_lines = []
+    path_replaced = False
+
+    for line in source_lines:
+        if line.strip().startswith("path:"):
+            runtime_lines.append(
+                f"path: {dataset_root.as_posix()}"
+            )
+            path_replaced = True
+        else:
+            runtime_lines.append(line)
+
+    if not path_replaced:
+        raise ValueError(
+            f"data.yaml is missing path entry: {source_yaml}"
+        )
+
+    runtime_yaml.write_text(
+        "\n".join(runtime_lines) + "\n",
+        encoding="utf-8",
+    )
+
+    return runtime_yaml
+
+
 def build_training_kwargs(
     mode: str,
     data_yaml: Path,
@@ -212,13 +254,17 @@ def run_training(
 
     require_cuda(torch_module)
 
+    runtime_data_yaml = prepare_ultralytics_data_yaml(
+        data_yaml
+    )
+
     weights = get_base_weights(project_root)
 
     model = yolo_factory(weights)
 
     training_kwargs = build_training_kwargs(
         mode=mode,
-        data_yaml=data_yaml,
+        data_yaml=runtime_data_yaml,
         batch=batch,
     )
 
