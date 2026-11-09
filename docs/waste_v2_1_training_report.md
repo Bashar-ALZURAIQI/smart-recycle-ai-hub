@@ -1,7 +1,7 @@
 # Smart Recycle AI-Hub — YOLO26n Waste V2.1 Training and External Benchmark Report
 
 **Report finalized:** 2026-11-10  
-**Branch:** `feature/waste-v2.1`  
+**Canonical branch:** `main` (merged from `feature/waste-v2.1` via PR #3; original commits preserved)  
 **Model status:** **Selected as the improved development candidate**; final blind and physical-system tests remain pending.  
 **Scope:** Four-class waste object detection, not physical sorting accuracy.
 
