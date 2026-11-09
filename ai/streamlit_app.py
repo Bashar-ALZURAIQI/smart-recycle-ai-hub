@@ -4,8 +4,8 @@ from PIL import Image
 import streamlit as st
 
 from ai.inference import (
-    V1_MODEL_PATH,
     V2_MODEL_PATH,
+    V2_1_MODEL_PATH,
     extract_detections,
     load_model,
     run_inference,
@@ -47,13 +47,13 @@ def get_image_id(uploaded_file):
 
 
 @st.cache_resource
-def get_v1_model():
-    return load_model(V1_MODEL_PATH)
+def get_v2_model():
+    return load_model(V2_MODEL_PATH)
 
 
 @st.cache_resource
-def get_v2_model():
-    return load_model(V2_MODEL_PATH)
+def get_v2_1_model():
+    return load_model(V2_1_MODEL_PATH)
 
 
 def make_detection_rows(detections):
@@ -165,7 +165,7 @@ def show_model_panel(
 
 def main():
     st.set_page_config(
-        page_title="Smart Recycle AI-Hub - V1 vs V2",
+        page_title="Smart Recycle AI-Hub - V2 vs V2.1",
         page_icon="♻️",
         layout="wide",
     )
@@ -216,14 +216,14 @@ def main():
         )
 
         st.caption(
-            "YOLO26n V1 vs V2 — Same image, same threshold"
+            "YOLO26n V2 vs V2.1 — Same image, same threshold"
         )
 
     confidence_threshold = st.slider(
         "Confidence threshold",
         min_value=0.05,
         max_value=0.90,
-        value=0.25,
+        value=0.50,
         step=0.05,
     )
 
@@ -265,7 +265,7 @@ def main():
 
     if not uploaded_files:
         st.info(
-            "Upload an image to compare V1 and V2."
+            "Upload an image to compare V2 and V2.1."
         )
         return
 
@@ -289,18 +289,18 @@ def main():
         selected_file
     )
 
-    v1_model = get_v1_model()
     v2_model = get_v2_model()
-
-    v1_annotated_image, v1_detections = analyze_image(
-        image=image,
-        model=v1_model,
-        confidence_threshold=confidence_threshold,
-    )
+    v2_1_model = get_v2_1_model()
 
     v2_annotated_image, v2_detections = analyze_image(
         image=image,
         model=v2_model,
+        confidence_threshold=confidence_threshold,
+    )
+
+    v2_1_annotated_image, v2_1_detections = analyze_image(
+        image=image,
+        model=v2_1_model,
         confidence_threshold=confidence_threshold,
     )
 
@@ -315,8 +315,8 @@ def main():
     (
         image_count_column,
         tested_column,
-        v1_count_column,
         v2_count_column,
+        v2_1_count_column,
     ) = st.columns(4)
 
     with image_count_column:
@@ -333,16 +333,16 @@ def main():
             ),
         )
 
-    with v1_count_column:
-        st.metric(
-            "V1 detections",
-            len(v1_detections),
-        )
-
     with v2_count_column:
         st.metric(
             "V2 detections",
             len(v2_detections),
+        )
+
+    with v2_1_count_column:
+        st.metric(
+            "V2.1 detections",
+            len(v2_1_detections),
         )
 
     st.divider()
@@ -364,24 +364,24 @@ def main():
 
     st.divider()
 
-    v1_column, v2_column = st.columns(
+    v2_column, v2_1_column = st.columns(
         2
     )
-
-    with v1_column:
-        show_model_panel(
-            title="V1",
-            subtitle="YOLO26n V1 baseline",
-            annotated_image=v1_annotated_image,
-            detections=v1_detections,
-        )
 
     with v2_column:
         show_model_panel(
             title="V2",
-            subtitle="YOLO26n V2 MuSGD best.pt",
+            subtitle="YOLO26n V2 best.pt",
             annotated_image=v2_annotated_image,
             detections=v2_detections,
+        )
+
+    with v2_1_column:
+        show_model_panel(
+            title="V2.1",
+            subtitle="YOLO26n V2.1 best.pt",
+            annotated_image=v2_1_annotated_image,
+            detections=v2_1_detections,
         )
 
     st.divider()

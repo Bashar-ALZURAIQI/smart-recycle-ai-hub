@@ -5,8 +5,8 @@ from PIL import Image
 from streamlit.testing.v1 import AppTest
 
 from ai.inference import (
-    V1_MODEL_PATH,
     V2_MODEL_PATH,
+    V2_1_MODEL_PATH,
     load_model,
 )
 from ai.streamlit_app import (
@@ -89,7 +89,7 @@ def test_app_has_confidence_slider():
 
     assert (
         app.slider[0].value
-        == 0.25
+        == 0.50
     )
 
 
@@ -318,7 +318,7 @@ def test_tested_metric_does_not_duplicate_same_image():
     )
 
 
-def test_v1_and_v2_detection_metrics_exist():
+def test_v2_and_v2_1_detection_metrics_exist():
     image_bytes = make_test_image_bytes(
         (255, 0, 0)
     )
@@ -340,22 +340,27 @@ def test_v1_and_v2_detection_metrics_exist():
     )
 
     assert (
-        "V1 detections"
-        in metrics
-    )
-
-    assert (
         "V2 detections"
         in metrics
     )
 
-    assert int(
-        metrics["V1 detections"]
-    ) >= 0
+    assert (
+        "V2.1 detections"
+        in metrics
+    )
 
     assert int(
         metrics["V2 detections"]
     ) >= 0
+
+    assert int(
+        metrics["V2.1 detections"]
+    ) >= 0
+
+    assert (
+        "V1 detections"
+        not in metrics
+    )
 
 
 def test_reset_session_clears_uploaded_and_tested_counts():
@@ -398,7 +403,7 @@ def test_reset_session_clears_uploaded_and_tested_counts():
     ) == 0
 
 
-def test_uploaded_image_shows_original_v1_and_v2_images():
+def test_uploaded_image_shows_original_v2_and_v2_1_images():
     image_bytes = make_test_image_bytes(
         (255, 0, 0)
     )
@@ -420,7 +425,7 @@ def test_uploaded_image_shows_original_v1_and_v2_images():
     ) == 3
 
 
-def test_comparison_page_contains_v1_and_v2_titles():
+def test_comparison_page_contains_v2_and_v2_1_titles():
     image_bytes = make_test_image_bytes(
         (255, 0, 0)
     )
@@ -443,12 +448,12 @@ def test_comparison_page_contains_v1_and_v2_titles():
     ]
 
     assert any(
-        "V1" in text
+        "V2" in text
         for text in markdown_texts
     )
 
     assert any(
-        "V2" in text
+        "V2.1" in text
         for text in markdown_texts
     )
 
@@ -548,9 +553,9 @@ def test_get_best_detection_returns_none_for_empty_list():
     )
 
 
-def test_analyze_image_returns_v1_result():
+def test_analyze_image_returns_v2_result():
     model = load_model(
-        V1_MODEL_PATH
+        V2_MODEL_PATH
     )
 
     image = Image.new(
@@ -562,7 +567,7 @@ def test_analyze_image_returns_v1_result():
     annotated_image, detections = analyze_image(
         image=image,
         model=model,
-        confidence_threshold=0.25,
+        confidence_threshold=0.50,
     )
 
     assert (
@@ -581,9 +586,9 @@ def test_analyze_image_returns_v1_result():
     )
 
 
-def test_analyze_image_returns_v2_result():
+def test_analyze_image_returns_v2_1_result():
     model = load_model(
-        V2_MODEL_PATH
+        V2_1_MODEL_PATH
     )
 
     image = Image.new(
@@ -595,7 +600,7 @@ def test_analyze_image_returns_v2_result():
     annotated_image, detections = analyze_image(
         image=image,
         model=model,
-        confidence_threshold=0.25,
+        confidence_threshold=0.50,
     )
 
     assert (

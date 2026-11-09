@@ -8,6 +8,7 @@ from ai.inference import (
     SUPPORTED_CLASSES,
     V1_MODEL_PATH,
     V2_MODEL_PATH,
+    V2_1_MODEL_PATH,
     extract_detections,
     load_model,
     run_inference,
@@ -35,6 +36,12 @@ def test_v2_model_path_points_to_existing_best_weights():
     assert V2_MODEL_PATH.is_file()
 
 
+def test_v2_1_model_path_points_to_existing_best_weights():
+    assert isinstance(V2_1_MODEL_PATH, Path)
+    assert V2_1_MODEL_PATH.name == "best.pt"
+    assert V2_1_MODEL_PATH.is_file()
+
+
 def test_default_model_path_is_v2():
     assert MODEL_PATH == V2_MODEL_PATH
 
@@ -55,6 +62,13 @@ def test_load_v1_model_returns_yolo_model():
 
 def test_load_v2_model_returns_yolo_model():
     model = load_model(V2_MODEL_PATH)
+
+    assert isinstance(model, YOLO)
+    assert list(model.names.values()) == SUPPORTED_CLASSES
+
+
+def test_load_v2_1_model_returns_yolo_model():
+    model = load_model(V2_1_MODEL_PATH)
 
     assert isinstance(model, YOLO)
     assert list(model.names.values()) == SUPPORTED_CLASSES

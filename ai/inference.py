@@ -36,6 +36,16 @@ V2_MODEL_PATH = (
 )
 
 
+V2_1_MODEL_PATH = (
+    PROJECT_ROOT
+    / "runs"
+    / "detect"
+    / "waste_v2_1_yolo26n"
+    / "weights"
+    / "best.pt"
+)
+
+
 # Default model kept for backward compatibility with existing code/tests.
 MODEL_PATH = V2_MODEL_PATH
 
